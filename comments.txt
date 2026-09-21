@@ -1,0 +1,19 @@
+
+//when Making Updates Locally and Pushing to GitHub//
+git status
+git add .
+git commit -m "Describe what updates you made"
+git push
+
+
+//When You Edit Code on Another Device or Directly on GitHub//
+git add .
+git commit -m "Save local progress before pulling"
+git pull origin main
+git push
+
+
+Todo list
+* fake movement showing unncessary
+* session management
+* UI/UX improvement
