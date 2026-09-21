@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Fitness Coach{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Chart.js CDN for Progress Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-brand">AI_Fit</div>
+        <ul class="nav-links">
+            <li><a href="{% url 'home' %}">Home</a></li>
+            <li><a href="{% url 'profile' %}">Profile</a></li>
+            <li><a href="{% url 'home' %}#about">About</a></li>
+            <li><a href="{% url 'home' %}#contact">Contact</a></li>
+            <li><a href="{% url 'logout' %}" class="btn-logout">Logout</a></li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    <div class="main-content">
+        {% block body %}{% endblock %}
+    </div>
+</body>
+</html>

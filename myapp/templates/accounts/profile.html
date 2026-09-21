@@ -1,0 +1,42 @@
+{% extends 'accounts/base.html' %}
+{% block title %}User Profile{% endblock %}
+
+{% block body %}
+<div class="profile-container">
+    <div class="auth-card">
+        <h2>User Profile</h2>
+
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="profile-section">
+            <h3>Login Credentials</h3>
+            <p><strong>Username:</strong> {{ request.user.username }}</p>
+            <p><strong>Email:</strong> {{ request.user.email }}</p>
+            <p><strong>Member Since:</strong> {{ request.user.date_joined|date:"F d, Y" }}</p>
+        </div>
+
+        <div class="profile-section">
+            <h3>Personal Details</h3>
+            <p><strong>Full Name:</strong> {{ request.user.profile.full_name|default:"Not Provided" }}</p>
+            <p><strong>Age:</strong> {{ request.user.profile.age|default:"N/A" }}</p>
+            <p><strong>Gender:</strong> {{ request.user.profile.gender|default:"N/A" }}</p>
+            <p><strong>Height:</strong> {% if request.user.profile.height %}{{ request.user.profile.height }} cm{% else %}N/A{% endif %}</p>
+            <p><strong>Weight:</strong> {% if request.user.profile.weight %}{{ request.user.profile.weight }} kg{% else %}N/A{% endif %}</p>
+        </div>
+
+        <div class="profile-actions">
+            <a href="{% url 'edit_profile' %}" class="btn-primary">Edit Personal Details</a>
+            <a href="{% url 'change_password' %}" class="btn-secondary">Change Password</a>
+            <a href="{% url 'delete_user' %}" class="btn-danger">Delete Account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

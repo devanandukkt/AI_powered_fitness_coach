@@ -1,0 +1,49 @@
+{% extends 'accounts/base.html' %}
+{% block title %}Edit Profile{% endblock %}
+
+{% block body %}
+<div class="main-content">
+    <div class="auth-card">
+        <h2>Edit Personal Details</h2>
+
+        <!-- Flash messages and form validation errors -->
+        {% if messages or form.errors %}
+          <div class="messages">
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            {% endif %}
+
+            {% if form.errors %}
+              <div class="alert alert-error">
+                {% for field, errors in form.errors.items %}
+                  {% for error in errors %}
+                    <p>{{ field|capfirst }}: {{ error }}</p>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            {% for field in form %}
+              <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                {{ field }}
+              </div>
+            {% endfor %}
+
+            <div class="profile-actions">
+                <button type="submit" class="btn-primary">Save Changes</button>
+                <a href="{% url 'profile' %}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

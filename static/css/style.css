@@ -1,0 +1,1011 @@
+/* ==========================================================================
+   Base & Reset Styles
+   ========================================================================== */
+html {
+    scroll-behavior: smooth;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Ensure body fills the entire viewport */
+body {
+    background-image: url('/static/images/bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: #333333;
+    line-height: 1.6;
+}
+
+/* ==========================================================================
+   Sticky Navigation Bar
+   ========================================================================== */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    background-color: #003375;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    box-sizing: border-box;
+    z-index: 1000;
+}
+
+.nav-brand {
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links a {
+    color: #cbd5e1;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    color: #ffffff;
+}
+
+.btn-logout {
+    background-color: #ef4444;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    color: white !important;
+}
+
+@media screen and (max-width: 600px) {
+    header, .navbar, nav {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .nav-links, nav ul {
+        justify-content: center;
+        width: 100%;
+        font-size: 0.85rem;
+    }
+}
+
+/* ==========================================================================
+   Layout Containers & Cards
+   ========================================================================== */
+/* Centers all authentication and form pages vertically and horizontally */
+.main-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 60px; /* Accounts for fixed navbar height */
+}
+
+.profile-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 2rem 1rem;
+    box-sizing: border-box;
+}
+
+/* Authentication & Form Card Styling */
+.auth-card {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 2.5rem;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    border: 1px solid #e2e8f0;
+}
+
+.auth-card h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   Form Controls
+   ========================================================================== */
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+    color: #34495e;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+    background-color: #ffffff;
+    color: #1e293b;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* ==========================================================================
+   Alerts & Notifications
+   ========================================================================== */
+.messages {
+    margin-bottom: 1.25rem;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    margin-bottom: 0.5rem;
+    text-align: left;
+    line-height: 1.4;
+}
+
+.alert p {
+    margin: 0.2rem 0;
+}
+
+.alert-success { 
+    background-color: #d1fae5; 
+    color: #065f46; 
+    border: 1px solid #a7f3d0; 
+}
+
+.alert-error { 
+    background-color: #fee2e2; 
+    color: #991b1b; 
+    border: 1px solid #fca5a5; 
+}
+
+.alert-info { 
+    background-color: #e0f2fe; 
+    color: #075985; 
+    border: 1px solid #bae6fd; 
+}
+
+/* ==========================================================================
+   Password Instructions Box (5 Rules)
+   ========================================================================== */
+.password-instructions {
+    background-color: #f8fafc;
+    border-left: 4px solid #2563eb;
+    border-radius: 4px;
+    padding: 0.85rem 1rem;
+    margin: 1.25rem 0;
+}
+
+.password-instructions p {
+    font-size: 0.875rem;
+    color: #334155;
+    margin: 0 0 0.4rem 0;
+}
+
+.password-instructions ul {
+    padding-left: 1.2rem;
+    margin: 0;
+}
+
+.password-instructions li {
+    font-size: 0.825rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+/* ==========================================================================
+   Buttons & Links
+   ========================================================================== */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+    display: inline-block;
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-secondary {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
+.btn-secondary:hover {
+    background-color: #cbd5e1;
+}
+
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.auth-links {
+    margin-top: 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+}
+
+.auth-links a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Profile Sections
+   ========================================================================== */
+.profile-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.profile-section h3 {
+    font-size: 1.1rem;
+    color: #334155;
+    margin-bottom: 0.75rem;
+}
+
+.profile-section p {
+    font-size: 0.95rem;
+    color: #475569;
+    margin-bottom: 0.4rem;
+}
+
+/* ==========================================================================
+   Home Page Dashboard Components (Fully Responsive)
+   ========================================================================== */
+
+/* Main Container */
+.home-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+    margin-top: 60px;
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+/* Common Section Styling */
+.hero-section, 
+.analytics-section, 
+.info-section {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.hero-section h1,
+.analytics-section h2,
+.info-section h2 {
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    word-wrap: break-word;
+}
+
+.hero-section .subtitle,
+.info-section p {
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    color: #475569;
+}
+
+/* Feature Cards Grid */
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.card {
+    background: #f8fafc;
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-sizing: border-box;
+}
+
+.card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: #1e293b;
+}
+
+.card p {
+    font-size: 0.9rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Analytics & Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.chart-card {
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chart-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: #334155;
+    text-align: center;
+}
+
+/* Responsive Chart Canvas */
+.chart-card canvas {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+
+/* ==========================================================================
+   Media Queries: Mobile Portrait, Landscape & Tablets
+   ========================================================================== */
+
+/* Mobile Devices (Portrait - screens under 480px) */
+@media screen and (max-width: 480px) {
+    .home-container {
+        padding: 0.75rem;
+        gap: 1rem;
+        margin-top: 50px;
+    }
+
+    .hero-section, 
+    .analytics-section, 
+    .info-section {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .feature-cards {
+        grid-template-columns: 1fr; /* Single column stack on narrow screens */
+        gap: 0.75rem;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr; /* Single column for chart cards */
+        gap: 1rem;
+    }
+
+    .chart-card {
+        padding: 0.75rem;
+    }
+}
+
+/* Mobile Devices (Landscape Mode & Small Tablets) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+    .home-container {
+        padding: 1.25rem;
+    }
+
+    .feature-cards {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .charts-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+/* Device Orientation Specific Handling */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .home-container {
+        margin-top: 45px;
+        padding: 0.75rem;
+    }
+
+    .hero-section, 
+    .analytics-section, 
+    .info-section {
+        padding: 1rem;
+    }
+}
+
+/* ==========================================================================
+   Get In Touch & Footer Styling
+   ========================================================================== */
+.contact-section {
+    background-color: #0052b4;
+    color: #ffffff;
+    padding: 3rem 1.5rem 0 1.5rem;
+    border-radius: 12px;
+    margin-top: 2rem;
+}
+
+.contact-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.contact-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+}
+
+.contact-header p {
+    font-size: 1rem;
+    color: #dbeafe;
+}
+
+/* Contact Cards Grid */
+.contact-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.contact-card {
+    background-color: #0b61ce;
+    border: 1px solid #1d72e8;
+    border-radius: 10px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.contact-card:hover {
+    transform: translateY(-3px);
+}
+
+.card-icon {
+    font-size: 2.2rem;
+    color: #f59e0b;
+    margin-bottom: 0.75rem;
+}
+
+.contact-card h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+}
+
+.contact-card p {
+    font-size: 0.95rem;
+    color: #eff6ff;
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+}
+
+.contact-card .sub-text {
+    font-size: 0.85rem;
+    color: #bfdbfe;
+    display: block;
+}
+
+/* Send Us a Message Button */
+.action-btn-container {
+    text-align: center;
+    margin: 2.5rem 0 3.5rem 0;
+}
+
+.btn-send-message {
+    display: inline-block;
+    background-color: #ffffff;
+    color: #0052b4;
+    padding: 0.8rem 1.8rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-send-message:hover {
+    background-color: #f8fafc;
+    transform: scale(1.02);
+}
+
+/* Footer Section */
+.site-footer {
+    background-color: #003375;
+    margin: 0 -1.5rem;
+    padding: 3rem 2rem 1.5rem 2rem;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid #0b4596;
+}
+
+.footer-col h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 1rem;
+}
+
+.footer-col p {
+    font-size: 0.9rem;
+    color: #93c5fd;
+    line-height: 1.5;
+}
+
+.brand-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.social-links {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+}
+
+.social-links a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.footer-links, .footer-contact {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li, .footer-contact li {
+    font-size: 0.9rem;
+    color: #93c5fd;
+    margin-bottom: 0.6rem;
+}
+
+.footer-links a {
+    color: #93c5fd;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: #ffffff;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 1.5rem;
+    font-size: 0.85rem;
+    color: #60a5fa;
+}
+
+/* Card Icons (Amber / Golden Yellow) */
+.svg-icon-large {
+    width: 38px;
+    height: 38px;
+    fill: #f59e0b;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Footer List Icons */
+.footer-contact li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: #93c5fd;
+    margin-bottom: 0.6rem;
+}
+
+.svg-icon-small {
+    width: 18px;
+    height: 18px;
+    fill: #f59e0b;
+    flex-shrink: 0;
+}
+
+/* Exercise Selection Section */
+.exercise-select-section {
+    margin: 2.5rem 0;
+    text-align: center;
+}
+
+.exercise-card-wrapper {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.exercise-card-wrapper h2 {
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.exercise-card-wrapper p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.exercise-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.form-group-select {
+    width: 100%;
+    max-width: 350px;
+    text-align: left;
+}
+
+.form-group-select label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #334155;
+}
+
+.exercise-dropdown {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: #f8fafc;
+    color: #0f172a;
+    outline: none;
+    cursor: pointer;
+}
+
+.exercise-dropdown:focus {
+    border-color: #2563eb;
+}
+
+.btn-start-exercise {
+    background-color: #2563eb;
+    color: #ffffff;
+    border: none;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-start-exercise:hover {
+    background-color: #1d4ed8;
+}
+
+
+
+/* ==========================================================================
+   Workout History & Analytics Enhancements
+   ========================================================================== */
+
+/* Outer Section Card Container */
+.workout-history-section {
+    width: 100%;
+    margin-bottom: 2rem;
+    box-sizing: border-box;
+}
+.analytics-section {
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 12px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1.5rem;
+}
+
+/* User Header Card */
+.user-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1.25rem;
+}
+
+.user-card-header h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.5rem;
+}
+
+.user-id-text {
+    margin: 0.25rem 0 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.history-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.75rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.history-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.history-subtitle {
+    margin: 0.25rem 0 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.workout-counter-badge {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.section-subtitle {
+    color: #1e293b;
+    font-size: 1.25rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+/* Table Styling */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.workout-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.95rem;
+}
+
+.workout-table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.workout-table td {
+    padding: 0.9rem 1.25rem;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.workout-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.workout-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.badge {
+    background-color: #e0e7ff;
+    color: #3730a3;
+    padding: 0.3rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.accuracy-text {
+    color: #059669;
+    font-weight: 600;
+}
+
+.no-data-card {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+    color: #334155;
+}
+
+.no-data-card p {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.no-data-card .sub-text {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.4rem;
+    font-weight: normal;
+}
+
+/* Analytics Container Layout */
+.analytics-section h2 {
+    color: #0f172a;
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+}
+
+.chart-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1.25rem;
+    box-sizing: border-box;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.chart-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #1e293b;
+    font-size: 1rem;
+    text-align: center;
+}
+
+/* Precise Chart Container Heights (Solves Canvas Stretching/Collapsing) */
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.line-chart-wrapper {
+    height: 280px;
+}
+
+.pie-chart-wrapper {
+    height: 240px;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+}
+
+@media screen and (max-width: 640px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

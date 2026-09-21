@@ -1,0 +1,277 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}{{ display_name }} Session - AI Fitness Coach{% endblock %}
+
+{% block body %}
+<div class="exercise-session-container">
+    
+
+    <!-- Viewport Area -->
+    <div class="webcam-card">
+        <div class="session-header">
+            <h2>Live {{ display_name }} Tracking</h2>
+            <p>Ensure your full body is visible in the frame for real-time posture detection.</p>
+        </div>
+
+        <!-- Live Workout Metrics -->
+        <div class="stats-dashboard">
+            <div class="stat-card">
+                <span class="stat-label">Reps Completed</span>
+                <span id="live-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Form Accuracy</span>
+                <span id="live-accuracy" class="stat-value">100%</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Calories Burned</span>
+                <span id="live-calories" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <div class="video-wrapper">
+            <video id="webcam-raw" autoplay playsinline style="display:none;"></video>
+            <img id="feedback-stream" style="display:none; width: 100%; height: 100%; object-fit: cover;" alt="Live AI Feedback Stream" />
+            <video id="playback-video" controls style="display:none; width: 100%; height: 100%; object-fit: cover;"></video>
+
+            <div id="camera-placeholder" class="placeholder-overlay">
+                <p>Camera is currently OFF</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="control-actions">
+            <button id="startBtn" class="btn-control btn-start">Start Camera</button>
+            <button id="stopBtn" class="btn-control btn-stop" disabled>Stop Camera</button>
+            <button id="saveBtn" class="btn-control btn-save">Save Workout</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.exercise-session-container { max-width: 900px; margin: 2rem auto; text-align: center; padding: 0 1rem; }
+.stats-dashboard { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+.stat-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem 2rem; min-width: 150px; }
+.stat-label { display: block; font-size: 0.85rem; color: #64748b; font-weight: 600; }
+.stat-value { font-size: 2rem; font-weight: 700; color: #0f172a; }
+.webcam-card { background: #ffffff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0; }
+.video-wrapper { position: relative; width: 100%; max-width: 720px; height: 440px; margin: 0 auto; background-color: #0f172a; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.placeholder-overlay { color: #94a3b8; font-size: 1.1rem; font-weight: 500; }
+.control-actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
+.btn-control { padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+.btn-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-start { background-color: #10b981; color: #ffffff; }
+.btn-stop { background-color: #ef4444; color: #ffffff; }
+.btn-save { background-color: #2563eb; color: #ffffff; }
+</style>
+<script>
+    let videoStream = null;
+    let frameInterval = null;
+    let isProcessing = false;
+    
+    let currentCount = 0;
+    let currentAccuracy = 100;
+    let currentCalories = 0;
+    const exerciseType = "{{ display_name }}";
+
+    const rawVideo = document.getElementById('webcam-raw');
+    const feedbackImg = document.getElementById('feedback-stream');
+    const playbackVideo = document.getElementById('playback-video');
+    const placeholder = document.getElementById('camera-placeholder');
+
+    const liveCountEl = document.getElementById('live-count');
+    const liveAccuracyEl = document.getElementById('live-accuracy');
+    const liveCaloriesEl = document.getElementById('live-calories');
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Ensure Save button is disabled on page load
+    if (saveBtn) saveBtn.disabled = true;
+
+    // Helper: Stop active stream and frame loop
+    function stopCameraStream() {
+        if (frameInterval) {
+            clearInterval(frameInterval);
+            frameInterval = null;
+        }
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+    }
+
+    // Helper: Reset all UI counters & local tracking state
+    function resetWorkoutData() {
+        currentCount = 0;
+        currentAccuracy = 100;
+        currentCalories = 0;
+
+        if (liveCountEl) liveCountEl.innerText = "0";
+        if (liveAccuracyEl) liveAccuracyEl.innerText = "100%";
+        if (liveCaloriesEl) liveCaloriesEl.innerText = "0";
+
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        if (saveBtn) saveBtn.disabled = true;
+    }
+
+    // Start Recording & Stream Processing
+    startBtn.addEventListener('click', async () => {
+        try {
+            await fetch("{% url 'start_exercise' %}");
+
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            rawVideo.srcObject = videoStream;
+
+            placeholder.style.display = 'none';
+            playbackVideo.style.display = 'none';
+            feedbackImg.style.display = 'block';
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            if (saveBtn) saveBtn.disabled = true;
+
+            // Frame capture loop (~12 FPS)
+            frameInterval = setInterval(sendFrameToDjango, 80);
+
+        } catch (err) {
+            alert('Unable to access webcam. Please check camera permissions.');
+            console.error(err);
+        }
+    });
+
+    async function sendFrameToDjango() {
+        if (isProcessing || rawVideo.readyState !== rawVideo.HAVE_ENOUGH_DATA) return;
+        isProcessing = true;
+
+        canvas.width = rawVideo.videoWidth;
+        canvas.height = rawVideo.videoHeight;
+        ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.6);
+
+        const formData = new FormData();
+        formData.append('image', imageData);
+
+        try {
+            const res = await fetch("{% url 'process_exercise_frame' %}", {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                feedbackImg.src = data.image;
+                currentCount = data.count;
+                currentAccuracy = data.accuracy;
+                currentCalories = data.calories;
+
+                if (liveCountEl) liveCountEl.innerText = currentCount;
+                if (liveAccuracyEl) liveAccuracyEl.innerText = currentAccuracy + '%';
+                if (liveCaloriesEl) liveCaloriesEl.innerText = currentCalories;
+            }
+        } catch (e) {
+            console.error("Frame processing error:", e);
+        } finally {
+            isProcessing = false;
+        }
+    }
+
+    // Stop Camera & Show Playback Video
+    stopBtn.addEventListener('click', async () => {
+        stopCameraStream();
+
+        try {
+            const res = await fetch("{% url 'stop_exercise' %}");
+            const data = await res.json();
+
+            feedbackImg.style.display = 'none';
+            playbackVideo.src = data.video_url + '?t=' + new Date().getTime();
+            playbackVideo.style.display = 'block';
+            playbackVideo.play();
+        } catch (e) {
+            console.error("Error stopping session:", e);
+        }
+
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        // Enable save button ONLY if at least 1 rep was completed
+        if (saveBtn) {
+            saveBtn.disabled = currentCount <= 0;
+        }
+    });
+
+    // Save Workout: Show Alert with Calories & Reset Data
+    saveBtn.addEventListener('click', async () => {
+    // 1. Prepare payload
+        const payload = {
+            exercise_type: exerciseType,
+            count: currentCount,
+            accuracy: currentAccuracy,
+            calories: currentCalories
+        };
+
+        console.log("Sending Workout Payload:", payload);
+
+        try {
+            // 2. Fetch POST request to backend
+            const response = await fetch("{% url 'save_workout' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const resData = await response.json();
+            console.log("Server Response:", resData);
+
+            if (resData.status === 'success') {
+                // 3. Show Alert on Success
+                const summaryMsg = `🏋️ Workout Saved to Database!\n\n` +
+                    `• Exercise Type: ${exerciseType}\n` +
+                    `• Total Count: ${currentCount}\n` +
+                    `• Form Accuracy: ${currentAccuracy}%\n` +
+                    `• Calories Burned: ${currentCalories} kcal\n` +
+                    `• Saved Date: ${resData.date}\n` +
+                    `• Saved Time: ${resData.time}`;
+                alert(summaryMsg);
+
+                // 4. Reset UI and camera state
+                feedbackImg.style.display = 'none';
+                playbackVideo.style.display = 'none';
+                placeholder.style.display = 'block';
+
+                resetWorkoutData();
+            } else {
+                alert(`⚠️ Unable to save: ${resData.message}`);
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            alert("An error occurred while connecting to the server.");
+        }
+    });
+
+    // CSRF helper function
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
