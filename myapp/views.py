@@ -3,6 +3,9 @@ import string
 import os
 import cv2
 import base64
+import time
+import glob
+import subprocess
 import numpy as np
 import json
 from datetime import timedelta
@@ -251,68 +254,144 @@ def exercise_view(request):
 
 
 
-pushup_detector = PushupDetector()
-
 RECORDINGS_DIR = os.path.join(settings.BASE_DIR, 'static', 'recordings')
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-SESSION_DATA = {
-    'counter': 0,
-    'total_attempts': 0,
-    'stage': None,
-    'bad_form_flag': False,
-    'top_shoulder_y': None,
-    'video_writer': None,
-    'video_filename': 'recorded_feedback.mp4'
-}
+# In-memory session tracking keyed by user or session
+USER_SESSIONS = {}
+
+
+def get_session_key(request):
+    """Returns a unique string for the active user or browser session."""
+    if request.user.is_authenticated:
+        return f"user_{request.user.id}"
+    if not request.session.session_key:
+        request.session.create()
+    return f"session_{request.session.session_key}"
+
+
+def cleanup_user_recordings(key):
+    """Deletes all previously recorded video files for this user to save disk space."""
+    try:
+        pattern = os.path.join(RECORDINGS_DIR, f"recording_{key}_*")
+        for filepath in glob.glob(pattern):
+            if os.path.exists(filepath):
+                os.remove(filepath)
+    except Exception as e:
+        print(f"Error cleaning up old recordings for {key}: {e}")
+
+
+def convert_to_h264(input_path, output_path):
+    """
+    Converts raw OpenCV MP4 into browser-compatible H.264 HTML5 video.
+    Falls back gracefully if ffmpeg is not installed on the system.
+    """
+    try:
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', input_path,
+            '-vcodec', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-profile:v', 'baseline',
+            '-level', '3.0',
+            output_path
+        ]
+        # Run conversion silently
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        if os.path.exists(input_path):
+            os.remove(input_path)  # Delete raw file
+        return True
+    except Exception as e:
+        print(f"FFmpeg conversion skipped or failed (using raw file): {e}")
+        return False
+
+
+# views.py
+
+# views.py
 
 @csrf_exempt
 def start_exercise_session(request):
-    global SESSION_DATA
-    if SESSION_DATA['video_writer'] is not None:
-        SESSION_DATA['video_writer'].release()
+    key = get_session_key(request)
 
-    SESSION_DATA.update({
+    # 1. Close existing VideoWriter if active
+    if key in USER_SESSIONS and USER_SESSIONS[key].get('video_writer'):
+        try:
+            USER_SESSIONS[key]['video_writer'].release()
+        except Exception:
+            pass
+
+    # 2. Delete old recordings for this user
+    cleanup_user_recordings(key)
+
+    filename_raw = f"recording_{key}_{int(time.time())}_raw.mp4"
+
+    # Initialize session state with start timestamp
+    USER_SESSIONS[key] = {
         'counter': 0,
         'total_attempts': 0,
         'stage': None,
         'bad_form_flag': False,
         'top_shoulder_y': None,
-        'video_writer': None
-    })
+        'video_writer': None,
+        'video_filename_raw': filename_raw,
+        'detector': PushupDetector(),
+        'start_time': time.time(),      # Capture exact start time
+        'last_frame_time': time.time(), # Capture last frame arrival time
+        'frame_count': 0
+    }
+
     return JsonResponse({'status': 'started'})
+
 
 @csrf_exempt
 def process_exercise_frame(request):
-    global SESSION_DATA
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
+
+    key = get_session_key(request)
+    if key not in USER_SESSIONS:
+        start_exercise_session(request)
+
+    session_data = USER_SESSIONS[key]
 
     image_data = request.POST.get('image')
     if not image_data:
         return JsonResponse({'error': 'No image data'}, status=400)
 
-    encoded_data = image_data.split(',')[1]
-    nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    try:
+        encoded_data = image_data.split(',')[1]
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception as e:
+        return JsonResponse({'error': f'Image decode error: {str(e)}'}, status=400)
 
     if img is None:
         return JsonResponse({'error': 'Invalid image'}, status=400)
 
     h, w, _ = img.shape
 
-    if SESSION_DATA['video_writer'] is None:
-        filepath = os.path.join(RECORDINGS_DIR, SESSION_DATA['video_filename'])
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        SESSION_DATA['video_writer'] = cv2.VideoWriter(filepath, fourcc, 12.0, (w, h))
+    # Update last frame timestamp
+    session_data['last_frame_time'] = time.time()
 
-    # Delegate processing to pushup_detector module
-    img, counter, accuracy, calories_burned = pushup_detector.process_frame(img, SESSION_DATA)
+    # Initialize VideoWriter (recorded at base 10 FPS)
+    if session_data['video_writer'] is None:
+        filepath = os.path.join(RECORDINGS_DIR, session_data['video_filename_raw'])
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        except Exception:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        session_data['video_writer'] = cv2.VideoWriter(filepath, fourcc, 10.0, (w, h))
 
-    if SESSION_DATA['video_writer'] is not None:
-        SESSION_DATA['video_writer'].write(img)
+    # Process frame
+    detector = session_data['detector']
+    processed_img, counter, accuracy, calories_burned = detector.process_frame(img, session_data)
 
-    _, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])
+    if session_data['video_writer'] is not None:
+        session_data['video_writer'].write(processed_img)
+        session_data['frame_count'] += 1
+
+    _, buffer = cv2.imencode('.jpg', processed_img, [cv2.IMWRITE_JPEG_QUALITY, 75])
     frame_bytes = base64.b64encode(buffer).decode('utf-8')
 
     return JsonResponse({
@@ -322,58 +401,108 @@ def process_exercise_frame(request):
         'calories': calories_burned
     })
 
+
+def convert_to_h264_exact_duration(input_path, output_path, total_frames, target_duration):
+    """
+    Converts raw video into browser H.264 video and stretches/compresses playback time
+    so the final video duration matches target_duration exactly.
+    """
+    try:
+        # Base raw video duration created by OpenCV at 10.0 FPS
+        raw_duration = max(total_frames / 10.0, 0.1)
+        
+        # Multiply pts (presentation timestamp) by factor to force target real-world duration
+        pts_factor = target_duration / raw_duration
+
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', input_path,
+            '-filter:v', f'setpts={pts_factor}*PTS',
+            '-vcodec', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-profile:v', 'baseline',
+            '-level', '3.0',
+            output_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        if os.path.exists(input_path):
+            os.remove(input_path)  # Remove raw intermediate file
+        return True
+    except Exception as e:
+        print(f"FFmpeg conversion error: {e}")
+        return False
+
+
 @csrf_exempt
 def stop_exercise_session(request):
-    global SESSION_DATA
-    
-    # Save the current results before resetting
-    final_count = SESSION_DATA['counter']
-    final_attempts = SESSION_DATA['total_attempts']
-    
-    # Stop video writer
-    if SESSION_DATA['video_writer'] is not None:
-        SESSION_DATA['video_writer'].release()
-        SESSION_DATA['video_writer'] = None
+    key = get_session_key(request)
 
-    # Reset backend tracking state
-    SESSION_DATA.update({
-        'counter': 0,
-        'total_attempts': 0,
-        'stage': None,
-        'bad_form_flag': False,
-        'top_shoulder_y': None,
-    })
+    if key not in USER_SESSIONS:
+        return JsonResponse({'status': 'no_active_session', 'saved_reps': 0})
 
-    video_url = f"{settings.STATIC_URL}recordings/{SESSION_DATA['video_filename']}"
+    session_data = USER_SESSIONS[key]
+    final_count = session_data.get('counter', 0)
+    raw_filename = session_data.get('video_filename_raw', '')
+    raw_filepath = os.path.join(RECORDINGS_DIR, raw_filename)
+
+    # Calculate exact duration between frame stream start and end
+    start_time = session_data.get('start_time', time.time())
+    end_time = session_data.get('last_frame_time', time.time())
+    total_frames = session_data.get('frame_count', 0)
+    
+    # Real-world elapsed duration in seconds
+    exact_duration = max(end_time - start_time, 1.0)
+
+    # 1. Properly release video writer
+    if session_data.get('video_writer') is not None:
+        session_data['video_writer'].release()
+        session_data['video_writer'] = None
+
+    final_filename = raw_filename
+
+    # 2. Convert and time-stretch video to match exact session duration
+    if os.path.exists(raw_filepath) and total_frames > 0:
+        converted_filename = raw_filename.replace('_raw.mp4', '.mp4')
+        converted_filepath = os.path.join(RECORDINGS_DIR, converted_filename)
+        
+        if convert_to_h264_exact_duration(raw_filepath, converted_filepath, total_frames, exact_duration):
+            final_filename = converted_filename
+
+    # Clean up session dictionary
+    del USER_SESSIONS[key]
+
+    video_url = f"{settings.STATIC_URL}recordings/{final_filename}"
+
     return JsonResponse({
         'status': 'reset_complete',
         'video_url': video_url,
         'saved_reps': final_count
     })
 
-
 @csrf_exempt
 def save_workout_session(request):
-    """
-    Saves a new exercise session to the database under the user's ID.
-    """
+    """Saves workout to database and deletes the session's recorded video file."""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
 
     if not request.user.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Please log in to save workout.'}, status=401)
 
+    key = get_session_key(request)
+
     try:
         data = json.loads(request.body)
 
-        # Create record linked to request.user.id
         workout = WorkoutSession.objects.create(
-            user=request.user, # Assigns user and stores user_id in DB
+            user=request.user,
             exercise_type=data.get('exercise_type', 'Exercise'),
             count=int(data.get('count', 0)),
             accuracy=float(data.get('accuracy', 0.0)),
             calories=float(data.get('calories', 0.0))
         )
+
+        # DELETE RECORDINGS AFTER SAVING WORKOUT to prevent disk inflation
+        cleanup_user_recordings(key)
 
         return JsonResponse({
             'status': 'success',

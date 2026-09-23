@@ -12,8 +12,13 @@ git commit -m "Save local progress before pulling"
 git pull origin main
 git push
 
+//ruing command for public
+python manage.py runserver_plus --cert-file cert.crt 0.0.0.0:8000
+
+//view edited
 
 Todo list
 * fake movement showing unncessary
 * session management
 * UI/UX improvement
+* demo video

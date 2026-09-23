@@ -5,7 +5,6 @@
 {% block body %}
 <div class="exercise-session-container">
     
-
     <!-- Viewport Area -->
     <div class="webcam-card">
         <div class="session-header">
@@ -32,10 +31,11 @@
         <div class="video-wrapper">
             <video id="webcam-raw" autoplay playsinline style="display:none;"></video>
             <img id="feedback-stream" style="display:none; width: 100%; height: 100%; object-fit: cover;" alt="Live AI Feedback Stream" />
-            <video id="playback-video" controls style="display:none; width: 100%; height: 100%; object-fit: cover;"></video>
+            <video id="playback-video" controls playsinline style="display:none; width: 100%; height: 100%; object-fit: cover;"></video>
 
             <div id="camera-placeholder" class="placeholder-overlay">
-                <p>Camera is currently OFF</p>
+                <p id="placeholder-text">Camera is currently OFF</p>
+                <div id="loading-spinner" class="spinner" style="display:none;"></div>
             </div>
         </div>
 
@@ -56,14 +56,29 @@
 .stat-value { font-size: 2rem; font-weight: 700; color: #0f172a; }
 .webcam-card { background: #ffffff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0; }
 .video-wrapper { position: relative; width: 100%; max-width: 720px; height: 440px; margin: 0 auto; background-color: #0f172a; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.placeholder-overlay { color: #94a3b8; font-size: 1.1rem; font-weight: 500; }
+.placeholder-overlay { color: #94a3b8; font-size: 1.1rem; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 .control-actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
 .btn-control { padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
 .btn-control:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-start { background-color: #10b981; color: #ffffff; }
 .btn-stop { background-color: #ef4444; color: #ffffff; }
 .btn-save { background-color: #2563eb; color: #ffffff; }
+
+/* Processing Spinner */
+.spinner {
+    width: 38px;
+    height: 38px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #10b981;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 </style>
+
 <script>
     let videoStream = null;
     let frameInterval = null;
@@ -78,6 +93,8 @@
     const feedbackImg = document.getElementById('feedback-stream');
     const playbackVideo = document.getElementById('playback-video');
     const placeholder = document.getElementById('camera-placeholder');
+    const placeholderText = document.getElementById('placeholder-text');
+    const loadingSpinner = document.getElementById('loading-spinner');
 
     const liveCountEl = document.getElementById('live-count');
     const liveAccuracyEl = document.getElementById('live-accuracy');
@@ -90,10 +107,10 @@
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // Ensure Save button is disabled on page load
+    // Ensure Save button is disabled on initial page load
     if (saveBtn) saveBtn.disabled = true;
 
-    // Helper: Stop active stream and frame loop
+    // Helper: Stop active webcam stream & frame submission loop
     function stopCameraStream() {
         if (frameInterval) {
             clearInterval(frameInterval);
@@ -105,7 +122,7 @@
         }
     }
 
-    // Helper: Reset all UI counters & local tracking state
+    // Helper: Reset all UI counters & state
     function resetWorkoutData() {
         currentCount = 0;
         currentAccuracy = 100;
@@ -118,11 +135,21 @@
         startBtn.disabled = false;
         stopBtn.disabled = true;
         if (saveBtn) saveBtn.disabled = true;
+
+        playbackVideo.pause();
+        playbackVideo.src = "";
+        playbackVideo.style.display = 'none';
+        feedbackImg.style.display = 'none';
+        
+        placeholderText.innerText = "Camera is currently OFF";
+        loadingSpinner.style.display = 'none';
+        placeholder.style.display = 'flex';
     }
 
-    // Start Recording & Stream Processing
+    // 1. Start Recording & Camera Stream
     startBtn.addEventListener('click', async () => {
         try {
+            // Signal session start to Django
             await fetch("{% url 'start_exercise' %}");
 
             videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
@@ -136,15 +163,16 @@
             stopBtn.disabled = false;
             if (saveBtn) saveBtn.disabled = true;
 
-            // Frame capture loop (~12 FPS)
-            frameInterval = setInterval(sendFrameToDjango, 80);
+            // Frame processing loop (~12 FPS)
+            frameInterval = setInterval(sendFrameToDjango, 100);
 
         } catch (err) {
             alert('Unable to access webcam. Please check camera permissions.');
-            console.error(err);
+            console.error("Camera access error:", err);
         }
     });
 
+    // 2. Process Individual Frame
     async function sendFrameToDjango() {
         if (isProcessing || rawVideo.readyState !== rawVideo.HAVE_ENOUGH_DATA) return;
         isProcessing = true;
@@ -181,34 +209,56 @@
         }
     }
 
-    // Stop Camera & Show Playback Video
+    // 3. Stop Camera & Load Recorded Video Playback
     stopBtn.addEventListener('click', async () => {
         stopCameraStream();
+
+        // Show converting loader while backend encodes H.264 video
+        feedbackImg.style.display = 'none';
+        placeholder.style.display = 'flex';
+        placeholderText.innerText = "Processing video recording...";
+        loadingSpinner.style.display = 'block';
+
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
 
         try {
             const res = await fetch("{% url 'stop_exercise' %}");
             const data = await res.json();
 
-            feedbackImg.style.display = 'none';
-            playbackVideo.src = data.video_url + '?t=' + new Date().getTime();
-            playbackVideo.style.display = 'block';
-            playbackVideo.play();
+            if (data.video_url) {
+                placeholder.style.display = 'none';
+                loadingSpinner.style.display = 'none';
+
+                // Cache bust to prevent loading old recordings
+                playbackVideo.src = data.video_url + '?t=' + new Date().getTime();
+                playbackVideo.style.display = 'block';
+                
+                try {
+                    await playbackVideo.play();
+                } catch (playErr) {
+                    console.log("Autoplay prevented or paused:", playErr);
+                }
+            } else {
+                placeholderText.innerText = "Camera is currently OFF";
+                loadingSpinner.style.display = 'none';
+            }
         } catch (e) {
             console.error("Error stopping session:", e);
+            placeholderText.innerText = "Error loading recorded video.";
+            loadingSpinner.style.display = 'none';
         }
 
         startBtn.disabled = false;
-        stopBtn.disabled = true;
 
-        // Enable save button ONLY if at least 1 rep was completed
+        // Enable save button ONLY if reps were recorded
         if (saveBtn) {
             saveBtn.disabled = currentCount <= 0;
         }
     });
 
-    // Save Workout: Show Alert with Calories & Reset Data
+    // 4. Save Workout Session to Database
     saveBtn.addEventListener('click', async () => {
-    // 1. Prepare payload
         const payload = {
             exercise_type: exerciseType,
             count: currentCount,
@@ -216,10 +266,7 @@
             calories: currentCalories
         };
 
-        console.log("Sending Workout Payload:", payload);
-
         try {
-            // 2. Fetch POST request to backend
             const response = await fetch("{% url 'save_workout' %}", {
                 method: "POST",
                 headers: {
@@ -230,10 +277,8 @@
             });
 
             const resData = await response.json();
-            console.log("Server Response:", resData);
 
             if (resData.status === 'success') {
-                // 3. Show Alert on Success
                 const summaryMsg = `🏋️ Workout Saved to Database!\n\n` +
                     `• Exercise Type: ${exerciseType}\n` +
                     `• Total Count: ${currentCount}\n` +
@@ -242,11 +287,6 @@
                     `• Saved Date: ${resData.date}\n` +
                     `• Saved Time: ${resData.time}`;
                 alert(summaryMsg);
-
-                // 4. Reset UI and camera state
-                feedbackImg.style.display = 'none';
-                playbackVideo.style.display = 'none';
-                placeholder.style.display = 'block';
 
                 resetWorkoutData();
             } else {
@@ -258,7 +298,7 @@
         }
     });
 
-    // CSRF helper function
+    // CSRF Token Helper
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -273,5 +313,11 @@
         }
         return cookieValue;
     }
+
+    // Auto-cleanup on window navigation or tab close
+    window.addEventListener('beforeunload', () => {
+        stopCameraStream();
+        navigator.sendBeacon("{% url 'stop_exercise' %}");
+    });
 </script>
 {% endblock %}
