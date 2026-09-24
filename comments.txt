@@ -19,6 +19,9 @@ python manage.py runserver_plus --cert-file cert.crt 0.0.0.0:8000
 
 Todo list
 * fake movement showing unncessary
-* session management
+* session management(recorded video of each user is stored)
 * UI/UX improvement
 * demo video
+* calender progress view
+* logic for situp and squat
+*

@@ -4,9 +4,6 @@
 {% block title %}Home - AI Fitness Coach{% endblock %}
 
 {% block extra_head %}
-<!-- Fitnivo Dark Theme Stylesheet -->
-<link rel="stylesheet" href="{% static 'css/fitnivo.css' %}">
-
 <!-- Fonts & Chart.js -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,26 +23,31 @@
     <section class="hero-section">
         <div class="badge">OpenCV & MediaPipe Powered</div>
         <h1><span class="gradient-text">AI Fitness Coach</span></h1>
-        <p class="subtitle">Real-time Exercise Counter & Posture Correction via Computer Vision</p>
+        <p class="subtitle">Real-time Exercise Counter, Rep Accuracy, & Posture Correction via Computer Vision</p>
         
+        <!-- Expanded & Balanced 4-Card Feature Grid -->
         <div class="feature-cards">
             <div class="card">
                 <h3>📹 Real-Time Computer Vision</h3>
-                <p>Leverages OpenCV to capture video streams and detect human body keypoints instantly without extra sensors.</p>
+                <p>Leverages OpenCV to process live webcam streams and instantly detect human body keypoints without external hardware.</p>
             </div>
             <div class="card">
-                <h3>🦴 MediaPipe Pose Estimation</h3>
-                <p>Tracks 33 3D skeletal landmarks to calculate joint angles for precise squat, pushup, and rep counting.</p>
+                <h3>🦴 3D Skeletal Pose Estimation</h3>
+                <p>Tracks 33 MediaPipe 3D landmarks to compute precise joint angles for squats, pushups, and situps.</p>
             </div>
             <div class="card">
-                <h3>⚡ Live Posture Correction</h3>
-                <p>Provides immediate audio-visual feedback when your posture breaks, protecting you from workout injuries.</p>
+                <h3>⚡ Live Posture & Form Correction</h3>
+                <p>Detects posture breaks and improper movement depth instantly, alerting you to protect against injuries.</p>
+            </div>
+            <div class="card">
+                <h3>🔥 Calorie & Performance Analytics</h3>
+                <p>Calculates calorie expenditure based on repetition cadence, form accuracy, and workout duration.</p>
             </div>
         </div>
     </section>
 
     <!-- Exercise Selection Section -->
-    <section class="hero-section">
+    <section class="exercise-select-section">
         <div class="exercise-card-wrapper">
             <h2>Start Your AI Workout</h2>
             <p>Choose an exercise below and launch the live camera pose tracking.</p>
@@ -68,13 +70,40 @@
         </div>
     </section>
 
+    <!-- How It Works Section -->
+    <section class="how-it-works-section">
+        <h2>How AI_Fit Works</h2>
+        <div class="steps-grid">
+            <div class="card">
+                <span class="step-num">01</span>
+                <h3>Select Workout</h3>
+                <p>Choose your target exercise (Pushups, Situps, or Squats) from the dropdown above[cite: 3].</p>
+            </div>
+            <div class="card">
+                <span class="step-num">02</span>
+                <h3>Allow Camera Access</h3>
+                <p>Ensure your full body is visible in the frame for accurate keypoint skeleton tracking.</p>
+            </div>
+            <div class="card">
+                <span class="step-num">03</span>
+                <h3>Perform Exercises</h3>
+                <p>Get real-time audio and visual feedback on form accuracy, joint angles, and rep counts[cite: 3].</p>
+            </div>
+            <div class="card">
+                <span class="step-num">04</span>
+                <h3>Track Progress</h3>
+                <p>Save your session data to review your daily calorie burn and exercise accuracy history[cite: 3].</p>
+            </div>
+        </div>
+    </section>
+
     <!-- User Info & Today's Workout History Section -->
     <section class="workout-history-section">
         <div class="history-card">
             <div class="history-header">
                 <div>
                     <h2>Today's Exercise History</h2>
-                    <p class="history-subtitle">Track your performance and progress from today's active sessions.</p>
+                    <p class="history-subtitle">Track your performance and progress from today's active sessions[cite: 3].</p>
                 </div>
                 <div class="workout-counter-badge">
                     Sessions Saved Today: <strong>{{ todays_workouts.count }}</strong>
@@ -147,14 +176,14 @@
     <!-- About Section -->
     <section id="about" class="info-section">
         <h2>About AI_Fit</h2>
-        <p>AI_Fit is an intelligent computer vision solution designed to bring personal trainer expertise to your webcam. By analyzing joint angles in real time using Google MediaPipe Pose models and OpenCV image processing, AI_Fit ensures maximum movement efficiency while maintaining proper safety standards.</p>
+        <p>AI_Fit is an intelligent computer vision solution designed to bring personal trainer expertise to your webcam[cite: 3]. By analyzing joint angles in real time using Google MediaPipe Pose models and OpenCV image processing, AI_Fit ensures maximum movement efficiency while maintaining proper safety standards[cite: 3].</p>
     </section>
 
     <!-- Get In Touch & Footer Section -->
     <section id="contact" class="contact-section">
         <div class="contact-header">
             <h2>Get In Touch</h2>
-            <p>We'd love to hear from you. Reach out to us for any queries or information.</p>
+            <p>We'd love to hear from you. Reach out to us for any queries or information[cite: 3].</p>
         </div>
 
         <!-- Card Icons Grid -->
@@ -250,7 +279,7 @@
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; {% now "Y" %} AI Fitness Coach. All rights reserved.</p>
+                <p>&copy; {% now "Y" %} AI Fitness Coach. All rights reserved[cite: 3].</p>
             </div>
         </footer>
     </section>

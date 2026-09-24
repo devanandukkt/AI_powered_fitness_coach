@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AI Fitness Coach{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Cache-busting static CSS link -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v={% now 'U' %}">
     <!-- Chart.js CDN for Progress Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -13,8 +14,14 @@
     {% if user.is_authenticated %}
     <!-- Top Navigation Bar -->
     <nav class="navbar">
+        <!-- Hamburger Icon (First element for left side placement) -->
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <span class="hamburger"></span>
+        </button>
+
         <div class="nav-brand">AI_Fit</div>
-        <ul class="nav-links">
+
+        <ul class="nav-links" id="navLinks">
             <li><a href="{% url 'home' %}">Home</a></li>
             <li><a href="{% url 'profile' %}">Profile</a></li>
             <li><a href="{% url 'home' %}#about">About</a></li>
@@ -27,5 +34,16 @@
     <div class="main-content">
         {% block body %}{% endblock %}
     </div>
+
+    <script>
+        // Toggle Mobile Drawer
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.getElementById('navLinks');
+        if (navToggle && navLinks) {
+            navToggle.addEventListener('click', () => {
+                navLinks.classList.toggle('nav-active');
+            });
+        }
+    </script>
 </body>
 </html>
