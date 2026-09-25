@@ -21,7 +21,6 @@
 
     <!-- Hero Section: AI Fitness Coach Description -->
     <section class="hero-section">
-        <div class="badge">OpenCV & MediaPipe Powered</div>
         <h1><span class="gradient-text">AI Fitness Coach</span></h1>
         <p class="subtitle">Real-time Exercise Counter, Rep Accuracy, & Posture Correction via Computer Vision</p>
         
@@ -47,7 +46,7 @@
     </section>
 
     <!-- Exercise Selection Section -->
-    <section class="exercise-select-section">
+    <!--<section class="exercise-select-section">
         <div class="exercise-card-wrapper">
             <h2>Start Your AI Workout</h2>
             <p>Choose an exercise below and launch the live camera pose tracking.</p>
@@ -68,6 +67,44 @@
                 </button>
             </form>
         </div>
+    </section>-->
+
+    {% load static %}
+
+    <section class="exercise-select-section">
+        <div class="exercise-section-header">
+            <h2>Start Your AI Workout</h2>
+            <p>Choose an exercise below and launch the live camera pose tracking.</p>
+        </div>
+
+        <div class="exercise-cards-grid">
+            <!-- Push Up Card -->
+            <form action="{% url 'exercise' %}" method="GET" class="exercise-action-card">
+                <input type="hidden" name="exercise_type" value="pushup">
+                    <img src="{% static 'images/pushup.png' %}" alt="Push Ups" class="exercise-card-pushup-img">
+                <h3>Push Ups</h3>
+                <p>Tracks upper body form, chest depth, and arm joint extension angles.</p>
+                <button type="submit" class="btn-start-card">Start Push Ups &rarr;</button>
+            </form>
+
+            <!-- Squat Card -->
+            <form action="{% url 'exercise' %}" method="GET" class="exercise-action-card">
+                <input type="hidden" name="exercise_type" value="squat">
+                    <img src="{% static 'images/squat.png' %}" alt="Squats" class="exercise-card-squat-img">
+                <h3>Squats</h3>
+                <p>Monitors hip-to-knee alignment, back posture, and squat repetition depth.</p>
+                <button type="submit" class="btn-start-card">Start Squats &rarr;</button>
+            </form>
+
+            <!-- Sit Up Card -->
+            <form action="{% url 'exercise' %}" method="GET" class="exercise-action-card">
+                <input type="hidden" name="exercise_type" value="situp">
+                    <img src="{% static 'images/situp.png' %}" alt="Sit Ups" class="exercise-card-situp-img">
+                <h3>Sit Ups</h3>
+                <p>Evaluates core engagement, torso angle lift, and movement cadence.</p>
+                <button type="submit" class="btn-start-card">Start Sit Ups &rarr;</button>
+            </form>
+        </div>
     </section>
 
     <!-- How It Works Section -->
@@ -77,7 +114,7 @@
             <div class="card">
                 <span class="step-num">01</span>
                 <h3>Select Workout</h3>
-                <p>Choose your target exercise (Pushups, Situps, or Squats) from the dropdown above[cite: 3].</p>
+                <p>Choose your target exercise (Pushups, Situps, or Squats) from the workout cards above.</p>
             </div>
             <div class="card">
                 <span class="step-num">02</span>
@@ -303,7 +340,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const exerciseCounts = safeParseJSON('{{ exercise_counts_json|default:"[]"|escapejs }}');
     const exerciseAccuracies = safeParseJSON('{{ exercise_accuracies_json|default:"[]"|escapejs }}');
 
-    const chartColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+    const chartColors = ['#00f2fe', '#4facfe', '#ff0844', '#ffb199', '#7000ff'];
+    const hoverChartColors = ['#38f9d7', '#00c6ff', '#ff4e50', '#f9d423', '#9e00ff'];
 
     function createOrUpdateChart(canvasId, config) {
         const canvas = document.getElementById(canvasId);
@@ -319,72 +357,150 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.parentElement.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#9ca3af; font-size:0.9rem; font-style:italic;">${text}</div>`;
     }
 
-    // 1. Line Chart: Calorie Burn
-    if (dateLabels.length > 0 && caloriesData.length > 0) {
-        createOrUpdateChart('calorieChart', {
-            type: 'line',
-            data: {
-                labels: dateLabels,
-                datasets: [{
-                    label: 'Calories Burned (kcal)',
-                    data: caloriesData,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointBackgroundColor: '#ef4444'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
-                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
+    // Line Chart Config: Line draws sequentially across the x-axis
+    const getCalorieChartConfig = () => ({
+        type: 'line',
+        data: {
+            labels: dateLabels,
+            datasets: [{
+                label: 'Calories Burned (kcal)',
+                data: caloriesData,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#ef4444'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                x: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: 1500,
+                    from: NaN, // Progressively renders points left-to-right
+                    delay(ctx) {
+                        if (ctx.type !== 'data' || ctx.xStarted) return 0;
+                        ctx.xStarted = true;
+                        return ctx.index * 120; // Staggers point transitions
+                    }
                 },
-                plugins: { legend: { display: false } }
-            }
-        });
-    } else {
-        showNoDataMessage('calorieChart', 'No calorie data recorded yet.');
-    }
-
-    // 2. Pie Chart: Today's Exercise Volume
-    if (exerciseLabels.length > 0 && exerciseCounts.some(val => val > 0)) {
-        createOrUpdateChart('exerciseCountChart', {
-            type: 'doughnut',
-            data: {
-                labels: exerciseLabels,
-                datasets: [{ data: exerciseCounts, backgroundColor: chartColors, borderWidth: 0 }]
+                y: {
+                    type: 'number',
+                    easing: 'easeOutQuart',
+                    duration: 1500,
+                    from: (ctx) => ctx.chart.scales.y.getPixelForValue(0),
+                    delay(ctx) {
+                        if (ctx.type !== 'data' || ctx.yStarted) return 0;
+                        ctx.yStarted = true;
+                        return ctx.index * 120;
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#f3f4f6' } } }
-            }
-        });
-    } else {
-        showNoDataMessage('exerciseCountChart', 'No exercises logged today.');
-    }
-
-    // 3. Pie Chart: Form Accuracy
-    if (exerciseLabels.length > 0 && exerciseAccuracies.some(val => val > 0)) {
-        createOrUpdateChart('accuracyChart', {
-            type: 'doughnut',
-            data: {
-                labels: exerciseLabels,
-                datasets: [{ data: exerciseAccuracies, backgroundColor: chartColors, borderWidth: 0 }]
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#f3f4f6' } } }
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Doughnut Chart Config: Builds slice by slice sequentially
+    const getDoughnutChartConfig = (dataValues, unit) => ({
+        type: 'doughnut',
+        data: {
+            labels: exerciseLabels,
+            datasets: [{
+                data: dataValues,
+                backgroundColor: chartColors,
+                hoverBackgroundColor: hoverChartColors,
+                borderWidth: 3,
+                borderColor: '#0a101c',
+                hoverBorderColor: '#ffffff',
+                hoverBorderWidth: 4,
+                hoverOffset: 18,
+                spacing: 4,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: 20 },
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 1800,
+                easing: 'easeInOutQuart',
+                // Staggers slice rendering so segments build sequentially
+                delay(ctx) {
+                    if (ctx.type !== 'data') return 0;
+                    return ctx.dataIndex * 300;
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#f3f4f6', font: { family: 'Inter', size: 12 }, usePointStyle: true, padding: 18 }
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(7, 9, 14, 0.95)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#60a5fa',
+                    borderColor: 'rgba(59, 130, 246, 0.4)',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => ` ${context.label || ''}: ${context.parsed || 0}${unit}`
+                    }
+                }
+            }
+        }
+    });
+
+    // Scroll Observer: Triggers progressive drawing when element enters viewport
+    const chartObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const canvasId = entry.target.id;
+
+                if (canvasId === 'calorieChart') {
+                    if (dateLabels.length > 0 && caloriesData.length > 0) {
+                        createOrUpdateChart(canvasId, getCalorieChartConfig());
+                    } else {
+                        showNoDataMessage(canvasId, 'No calorie data recorded yet.');
+                    }
+                } else if (canvasId === 'exerciseCountChart') {
+                    if (exerciseLabels.length > 0 && exerciseCounts.some(v => v > 0)) {
+                        createOrUpdateChart(canvasId, getDoughnutChartConfig(exerciseCounts, ' reps'));
+                    } else {
+                        showNoDataMessage(canvasId, 'No exercises logged today.');
+                    }
+                } else if (canvasId === 'accuracyChart') {
+                    if (exerciseLabels.length > 0 && exerciseAccuracies.some(v => v > 0)) {
+                        createOrUpdateChart(canvasId, getDoughnutChartConfig(exerciseAccuracies, '% Accuracy'));
+                    } else {
+                        showNoDataMessage(canvasId, 'No form accuracy data today.');
+                    }
+                }
+
+                entry.target.parentElement.classList.add('chart-visible');
+                observer.unobserve(entry.target);
             }
         });
-    } else {
-        showNoDataMessage('accuracyChart', 'No form accuracy data today.');
-    }
+    }, {
+        threshold: 0.35 // Triggers when 35% of chart is visible while scrolling
+    });
+
+    ['calorieChart', 'exerciseCountChart', 'accuracyChart'].forEach(id => {
+        const canvas = document.getElementById(id);
+        if (canvas) chartObserver.observe(canvas);
+    });
 });
 </script>
+
 {% endblock %}

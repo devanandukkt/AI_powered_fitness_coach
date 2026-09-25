@@ -24,4 +24,3 @@ Todo list
 * demo video
 * calender progress view
 * logic for situp and squat
-*
