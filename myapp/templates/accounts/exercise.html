@@ -87,7 +87,7 @@
     let currentCount = 0;
     let currentAccuracy = 100;
     let currentCalories = 0;
-    const exerciseType = "{{ display_name }}";
+    const exerciseType = "{{ exercise_type }}";
 
     const rawVideo = document.getElementById('webcam-raw');
     const feedbackImg = document.getElementById('feedback-stream');
@@ -150,7 +150,7 @@
     startBtn.addEventListener('click', async () => {
         try {
             // Signal session start to Django
-            await fetch("{% url 'start_exercise' %}");
+            await fetch(`{% url 'start_exercise' %}?exercise_type=${exerciseType}`);
 
             videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
             rawVideo.srcObject = videoStream;
@@ -172,7 +172,19 @@
         }
     });
 
-    // 2. Process Individual Frame
+    async function startSession() {
+        try {
+            const res = await fetch(`{% url 'start_exercise' %}?exercise_type=${exerciseType}`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            console.log("Session started:", data);
+        } catch (e) {
+            console.error("Start session error:", e);
+        }
+    }
+
+    // 2. Safely parse and render data inside sendFrameToDjango
     async function sendFrameToDjango() {
         if (isProcessing || rawVideo.readyState !== rawVideo.HAVE_ENOUGH_DATA) return;
         isProcessing = true;
@@ -193,11 +205,16 @@
 
             if (res.ok) {
                 const data = await res.json();
-                feedbackImg.src = data.image;
-                currentCount = data.count;
-                currentAccuracy = data.accuracy;
-                currentCalories = data.calories;
+                
+                // Set image source
+                if (data.image) feedbackImg.src = data.image;
 
+                // Safe fallback parsing to prevent 'undefined'
+                currentCount = data.count ?? 0;
+                currentAccuracy = data.accuracy ?? 100.0;
+                currentCalories = data.calories ?? 0;
+
+                // Update UI element text content
                 if (liveCountEl) liveCountEl.innerText = currentCount;
                 if (liveAccuracyEl) liveAccuracyEl.innerText = currentAccuracy + '%';
                 if (liveCaloriesEl) liveCaloriesEl.innerText = currentCalories;

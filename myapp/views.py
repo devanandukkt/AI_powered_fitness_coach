@@ -1,6 +1,7 @@
 import secrets
 import string
 import os
+from urllib import request
 import cv2
 import base64
 import time
@@ -12,7 +13,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Sum, Avg
 from django.http import JsonResponse
-from .exercise_model.pushup import PushupDetector
+from .exercise_model.detectors import get_exercise_detector
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect
@@ -305,28 +306,29 @@ def convert_to_h264(input_path, output_path):
         print(f"FFmpeg conversion skipped or failed (using raw file): {e}")
         return False
 
-
-# views.py
-
-# views.py
+# myapp/views.py
 
 @csrf_exempt
 def start_exercise_session(request):
     key = get_session_key(request)
 
-    # 1. Close existing VideoWriter if active
     if key in USER_SESSIONS and USER_SESSIONS[key].get('video_writer'):
         try:
             USER_SESSIONS[key]['video_writer'].release()
         except Exception:
             pass
 
-    # 2. Delete old recordings for this user
     cleanup_user_recordings(key)
 
     filename_raw = f"recording_{key}_{int(time.time())}_raw.mp4"
 
-    # Initialize session state with start timestamp
+    # Accept both 'exercise' AND 'exercise_type' query params
+    exercise_type = (
+        request.GET.get('exercise_type') or 
+        request.POST.get('exercise_type') or 
+        request.GET.get('exercise') or 
+        'pushup'
+    )
     USER_SESSIONS[key] = {
         'counter': 0,
         'total_attempts': 0,
@@ -335,13 +337,14 @@ def start_exercise_session(request):
         'top_shoulder_y': None,
         'video_writer': None,
         'video_filename_raw': filename_raw,
-        'detector': PushupDetector(),
-        'start_time': time.time(),      # Capture exact start time
-        'last_frame_time': time.time(), # Capture last frame arrival time
+        'detector': get_exercise_detector(exercise_type), # Uses factory helper
+        'exercise_type': exercise_type,
+        'start_time': time.time(),
+        'last_frame_time': time.time(),
         'frame_count': 0
     }
 
-    return JsonResponse({'status': 'started'})
+    return JsonResponse({'status': 'started', 'exercise': exercise_type})
 
 
 @csrf_exempt
@@ -370,11 +373,8 @@ def process_exercise_frame(request):
         return JsonResponse({'error': 'Invalid image'}, status=400)
 
     h, w, _ = img.shape
-
-    # Update last frame timestamp
     session_data['last_frame_time'] = time.time()
 
-    # Initialize VideoWriter (recorded at base 10 FPS)
     if session_data['video_writer'] is None:
         filepath = os.path.join(RECORDINGS_DIR, session_data['video_filename_raw'])
         try:
@@ -383,7 +383,7 @@ def process_exercise_frame(request):
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         session_data['video_writer'] = cv2.VideoWriter(filepath, fourcc, 10.0, (w, h))
 
-    # Process frame
+    # Process frame with the assigned detector
     detector = session_data['detector']
     processed_img, counter, accuracy, calories_burned = detector.process_frame(img, session_data)
 
@@ -394,6 +394,7 @@ def process_exercise_frame(request):
     _, buffer = cv2.imencode('.jpg', processed_img, [cv2.IMWRITE_JPEG_QUALITY, 75])
     frame_bytes = base64.b64encode(buffer).decode('utf-8')
 
+    # Return explicit JSON keys that match exercise.html
     return JsonResponse({
         'image': f"data:image/jpeg;base64,{frame_bytes}",
         'count': counter,

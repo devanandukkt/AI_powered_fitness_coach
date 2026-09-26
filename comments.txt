@@ -26,3 +26,8 @@ Todo list
 * logic for situp and squat
 * save workout error
 * recorded file finding delay
+
+
+edit 
+add @csrf_exempt in views 404
+add 'top_shoulder_y': None, in views 337
