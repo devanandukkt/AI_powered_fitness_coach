@@ -124,12 +124,12 @@
             <div class="card">
                 <span class="step-num">03</span>
                 <h3>Perform Exercises</h3>
-                <p>Get real-time audio and visual feedback on form accuracy, joint angles, and rep counts[cite: 3].</p>
+                <p>Get real-time audio and visual feedback on form accuracy, joint angles, and rep counts.</p>
             </div>
             <div class="card">
                 <span class="step-num">04</span>
                 <h3>Track Progress</h3>
-                <p>Save your session data to review your daily calorie burn and exercise accuracy history[cite: 3].</p>
+                <p>Save your session data to review your daily calorie burn and exercise accuracy history.</p>
             </div>
         </div>
     </section>
@@ -140,7 +140,7 @@
             <div class="history-header">
                 <div>
                     <h2>Today's Exercise History</h2>
-                    <p class="history-subtitle">Track your performance and progress from today's active sessions[cite: 3].</p>
+                    <p class="history-subtitle">Track your performance and progress from today's active sessions.</p>
                 </div>
                 <div class="workout-counter-badge">
                     Sessions Saved Today: <strong>{{ todays_workouts.count }}</strong>
@@ -213,14 +213,14 @@
     <!-- About Section -->
     <section id="about" class="info-section">
         <h2>About AI_Fit</h2>
-        <p>AI_Fit is an intelligent computer vision solution designed to bring personal trainer expertise to your webcam[cite: 3]. By analyzing joint angles in real time using Google MediaPipe Pose models and OpenCV image processing, AI_Fit ensures maximum movement efficiency while maintaining proper safety standards[cite: 3].</p>
+        <p>AI_Fit is an intelligent computer vision solution designed to bring personal trainer expertise to your webcam.By analyzing joint angles in real time using Google MediaPipe Pose models and OpenCV image processing, AI_Fit ensures maximum movement efficiency while maintaining proper safety standards.</p>
     </section>
 
     <!-- Get In Touch & Footer Section -->
     <section id="contact" class="contact-section">
         <div class="contact-header">
             <h2>Get In Touch</h2>
-            <p>We'd love to hear from you. Reach out to us for any queries or information[cite: 3].</p>
+            <p>We'd love to hear from you. Reach out to us for any queries or information.</p>
         </div>
 
         <!-- Card Icons Grid -->
@@ -354,7 +354,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function showNoDataMessage(canvasId, text) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
-        canvas.parentElement.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#9ca3af; font-size:0.9rem; font-style:italic;">${text}</div>`;
+        const wrapper = canvas.parentElement;
+    
+        // Inject centered no-data placeholder message
+        wrapper.innerHTML = `
+            <div style="display:flex; justify-content:center; align-items:center; height:100%; color:#9ca3af; font-size:0.9rem; font-style:italic;">
+                <p>${text}</p>
+            </div>
+        `;
+        wrapper.classList.add('chart-visible');
     }
 
     // Line Chart Config: Line draws sequentially across the x-axis
@@ -484,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (exerciseLabels.length > 0 && exerciseAccuracies.some(v => v > 0)) {
                         createOrUpdateChart(canvasId, getDoughnutChartConfig(exerciseAccuracies, '% Accuracy'));
                     } else {
-                        showNoDataMessage(canvasId, 'No form accuracy data today.');
+                        showNoDataMessage(canvasId, 'No exercises logged today.');
                     }
                 }
 

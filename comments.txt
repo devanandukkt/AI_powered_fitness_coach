@@ -24,3 +24,5 @@ Todo list
 * demo video
 * calender progress view
 * logic for situp and squat
+* save workout error
+* recorded file finding delay
