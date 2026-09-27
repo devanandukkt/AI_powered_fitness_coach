@@ -1,68 +1,109 @@
 {% extends 'accounts/base.html' %}
+{% load static %}
 
 {% block title %}{{ display_name }} Session - AI Fitness Coach{% endblock %}
 
 {% block body %}
 <div class="exercise-session-container">
-    
-    <!-- Viewport Area -->
-    <div class="webcam-card">
-        <div class="session-header">
-            <h2>Live {{ display_name }} Tracking</h2>
-            <p>Ensure your full body is visible in the frame for real-time posture detection.</p>
-        </div>
-
-        <!-- Live Workout Metrics -->
-        <div class="stats-dashboard">
-            <div class="stat-card">
-                <span class="stat-label">Reps Completed</span>
-                <span id="live-count" class="stat-value">0</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Form Accuracy</span>
-                <span id="live-accuracy" class="stat-value">100%</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Calories Burned</span>
-                <span id="live-calories" class="stat-value">0</span>
-            </div>
-        </div>
-
-        <div class="video-wrapper">
+    <section class="workout-stage" aria-label="{{ display_name }} workout session">
+        <div class="workout-main">
+            <div class="video-wrapper">
             <video id="webcam-raw" autoplay playsinline style="display:none;"></video>
-            <img id="feedback-stream" style="display:none; width: 100%; height: 100%; object-fit: cover;" alt="Live AI Feedback Stream" />
-            <video id="playback-video" controls playsinline style="display:none; width: 100%; height: 100%; object-fit: cover;"></video>
+            <img id="feedback-stream" style="display:none; width: 100%; height: 100%; object-fit: contain;" alt="Live AI feedback stream" />
+            <video id="playback-video" controls playsinline style="display:none; width: 100%; height: 100%; object-fit: contain;"></video>
 
             <div id="camera-placeholder" class="placeholder-overlay">
-                <p id="placeholder-text">Camera is currently OFF</p>
+                <svg class="camera-placeholder-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2.2l4.1 3.1c.8.6 1.9 0 1.9-1V7.1c0-1-1.1-1.6-1.9-1L16 9.2V7a2 2 0 0 0-2-2Z"/></svg>
+                <h1 id="placeholder-text">Camera is currently OFF</h1>
+                <p class="camera-hint">Start your camera when you’re ready to begin {{ display_name|lower }} tracking.</p>
                 <div id="loading-spinner" class="spinner" style="display:none;"></div>
+            </div>
+            <span class="session-badge">LIVE SESSION · {{ display_name|upper }}</span>
+            </div>
+
+            <div class="control-actions" aria-label="Workout controls">
+                <button id="startBtn" class="btn-control btn-start"><span class="control-icon" aria-hidden="true">◉</span>Start</button>
+                <button id="stopBtn" class="btn-control btn-stop" disabled><span class="control-icon stop-icon" aria-hidden="true">■</span>Stop</button>
+                <button id="saveBtn" class="btn-control btn-save" disabled><span class="control-icon" aria-hidden="true">↓</span>Save</button>
             </div>
         </div>
 
-        <!-- Controls -->
-        <div class="control-actions">
-            <button id="startBtn" class="btn-control btn-start">Start Camera</button>
-            <button id="stopBtn" class="btn-control btn-stop" disabled>Stop Camera</button>
-            <button id="saveBtn" class="btn-control btn-save">Save Workout</button>
-        </div>
-    </div>
+        <aside class="workout-sidebar" aria-label="Workout metrics and exercise guide">
+            <article class="metric-card metric-reps">
+                <span class="metric-icon" aria-hidden="true">↻</span>
+                <div><h5>Reps completed</h5><p class="metric-value"><span id="live-count">0</span></p></div>
+            </article>
+            <article class="metric-card metric-form">
+                <span class="metric-icon" aria-hidden="true">◎</span>
+                <div><h5>Form accuracy</h5><p id="live-accuracy" class="metric-value">100%</p></div>
+            </article>
+            <article class="metric-card metric-calories">
+                <span class="metric-icon" aria-hidden="true">♨</span>
+                <div><h5>Calories burned</h5><p class="metric-value"><span id="live-calories">0</span> <span class="metric-unit">kcal</span></p></div>
+            </article>
+            <article class="demo-card{% if exercise_type == 'pushup' or exercise_type == 'squat' or exercise_type == 'situp' %} demo-card-video{% endif %}">
+                <div class="demo-heading"><span class="metric-icon" aria-hidden="true">▷</span><h2>{{ display_name }} guide</h2></div>
+                <div class="demo-artwork">
+                    {% if exercise_type == 'pushup' or exercise_type == 'squat' or exercise_type == 'situp' %}
+                    <video class="demo-video" autoplay muted loop playsinline aria-label="Continuous {{ display_name|lower }} demonstration">
+                        {% if exercise_type == 'pushup' %}
+                        <source src="{% static 'videos/pushups.mp4' %}" type="video/mp4">
+                        {% elif exercise_type == 'squat' %}
+                        <source src="{% static 'videos/squats.mp4' %}" type="video/mp4">
+                        {% elif exercise_type == 'situp' %}
+                        <source src="{% static 'videos/situps.mp4' %}" type="video/mp4">
+                        {% endif %}
+                    </video>
+                    {% else %}
+                    <img src="{% static 'images/' %}{{ exercise_type }}.png" alt="{{ display_name }} exercise demonstration">
+                    {% endif %}
+                </div>
+                <p>Keep your full body in frame and follow the movement with steady form.</p>
+            </article>
+        </aside>
+    </section>
 </div>
 
 <style>
-.exercise-session-container { max-width: 900px; margin: 2rem auto; text-align: center; padding: 0 1rem; }
-.stats-dashboard { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1.5rem; }
-.stat-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem 2rem; min-width: 150px; }
-.stat-label { display: block; font-size: 0.85rem; color: #64748b; font-weight: 600; }
-.stat-value { font-size: 2rem; font-weight: 700; color: #0f172a; }
-.webcam-card { background: #ffffff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0; }
-.video-wrapper { position: relative; width: 100%; max-width: 720px; height: 440px; margin: 0 auto; background-color: #0f172a; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.placeholder-overlay { color: #94a3b8; font-size: 1.1rem; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-.control-actions { display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
-.btn-control { padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
-.btn-control:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-start { background-color: #10b981; color: #ffffff; }
-.btn-stop { background-color: #ef4444; color: #ffffff; }
-.btn-save { background-color: #2563eb; color: #ffffff; }
+.main-content:has(.exercise-session-container) { align-items: stretch; justify-content: stretch; padding: 0; margin-top: 70px; height: calc(100vh - 70px); min-height: 0; flex: none; overflow: hidden; }
+.exercise-session-container { width: 100%; height: 100%; min-height: 0; color: var(--text-main); }
+.workout-stage { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(300px, .9fr); background: var(--bg-dark); }
+.workout-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: .5rem; gap: .5rem; }
+.video-wrapper { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--border-accent); border-radius: 18px; background: radial-gradient(ellipse at 50% 42%, rgba(59,130,246,.16), transparent 58%), linear-gradient(145deg, #111a2a, #080c14 70%); display: flex; align-items: center; justify-content: center; }
+.video-wrapper > img, .video-wrapper > video { position: absolute; inset: 0; }
+.placeholder-overlay { padding: 2rem; text-align: center; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: .85rem; }
+.placeholder-overlay h1 { color: var(--text-main); font: 700 clamp(1.5rem, 3vw, 2.4rem)/1.2 var(--font-heading); }
+.camera-placeholder-icon { width: 58px; height: 58px; fill: var(--accent-blue); opacity: .9; margin-bottom: .5rem; }
+.camera-hint { max-width: 380px; font-size: .95rem; }
+.session-badge { position: absolute; top: 1.25rem; left: 1.25rem; padding: .45rem .75rem; border-radius: 999px; background: rgba(7,9,14,.72); border: 1px solid var(--border-color); color: #bfdbfe; font-size: .72rem; letter-spacing: .1em; font-weight: 700; }
+.control-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; overflow: hidden; border: 1px solid var(--border-accent); border-radius: 14px; background: linear-gradient(110deg, #2563eb, #1d4ed8); }
+.btn-control { min-height: 76px; padding: .8rem; display: flex; justify-content: center; align-items: center; gap: .65rem; color: #fff; font: 650 1rem var(--font-body); border: 0; border-right: 1px solid rgba(255,255,255,.28); background: transparent; cursor: pointer; transition: background .2s, opacity .2s; }
+.btn-control:last-child { border-right: 0; }
+.btn-control:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.btn-control:disabled { opacity: .48; cursor: not-allowed; }
+.control-icon { font-size: 1.5rem; line-height: 1; }
+.stop-icon { font-size: 1rem; }
+.workout-sidebar { height: 100%; max-height: 100%; display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)) minmax(0, 1.6fr); row-gap: 10px; min-height: 0; overflow: hidden; border-left: 1px solid var(--border-color); }
+.metric-card { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: clamp(.8rem, 2vw, 1.6rem); border-bottom: 1px solid var(--border-color); }
+.metric-reps { background: linear-gradient(135deg, rgba(239,68,68,.14), rgba(10,16,28,.82)); }
+.metric-form { background: linear-gradient(135deg, rgba(16,185,129,.14), rgba(10,16,28,.82)); }
+.metric-calories { background: linear-gradient(135deg, rgba(245,158,11,.14), rgba(10,16,28,.82)); }
+.metric-icon { flex: 0 0 auto; color: #bfdbfe; font-size: 2.25rem; line-height: 1; }
+.metric-card h2, .demo-card h2 { margin: 0 0 .45rem; color: var(--text-main); font: 650 1.05rem var(--font-heading); }
+.metric-value { margin: 0; color: #fff; font: 700 clamp(1.7rem, 2.5vw, 2.25rem)/1.15 var(--font-heading); }
+.metric-target, .metric-unit { color: var(--text-muted); font-size: .78em; }
+.demo-card { min-height: 0; overflow: hidden; padding: 1rem clamp(.8rem, 2vw, 1.6rem); background: linear-gradient(135deg, rgba(139,92,246,.16), rgba(10,16,28,.92)); }
+.demo-heading { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.demo-heading h2 { margin: 0; }
+.demo-artwork { position: relative; width: 100%; height: clamp(85px, 16vh, 145px); margin-left: 0; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; background: rgba(139,92,246,.15); }
+.demo-artwork img, .demo-artwork video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.demo-artwork video { object-fit: cover; }
+.demo-card > p { margin: .8rem 0 0; max-width: 260px; color: var(--text-muted); font-size: .82rem; }
+.demo-card-video { position: relative; isolation: isolate; }
+.demo-card-video::after { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgba(7,9,14,.88), rgba(7,9,14,.48) 58%, rgba(7,9,14,.18)); }
+.demo-card-video .demo-artwork { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; background: #fff; }
+.demo-card-video .demo-artwork video { object-fit: contain; }
+.demo-card-video .demo-heading, .demo-card-video > p { position: relative; z-index: 1; min-height: 100px; }
 
 /* Processing Spinner */
 .spinner {
@@ -76,6 +117,38 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+@media (max-width: 900px) {
+    .workout-stage { grid-template-columns: minmax(0, 1.5fr) minmax(260px, .8fr); }
+    .workout-sidebar { grid-template-rows: repeat(3, minmax(0, 1fr)) minmax(0, 1.6fr); }
+    .metric-card { padding: 1.2rem; gap: .75rem; }
+    .metric-icon { font-size: 1.8rem; }
+}
+@media (max-height: 720px) and (min-width: 681px) {
+    .metric-card { padding: .65rem 1rem; }
+    .metric-card h2, .demo-card h2 { font-size: .95rem; }
+    .metric-icon { font-size: 1.65rem; }
+    .metric-value { font-size: 1.6rem; }
+    .demo-card { padding-top: .65rem; padding-bottom: .65rem; }
+    .demo-heading { margin-bottom: .45rem; }
+    .demo-artwork { height: 90px; }
+    .demo-card > p { margin-top: .4rem; font-size: .75rem; }
+    .btn-control { min-height: 58px; }
+}
+@media (max-width: 680px) {
+    .main-content:has(.exercise-session-container) { margin-top: 74px; height: auto; min-height: calc(100vh - 74px); flex: 1 0 auto; }
+    .exercise-session-container, .workout-stage { height: auto; min-height: auto; }
+    .workout-stage { display: flex; flex-direction: column; }
+    .workout-main { padding: .75rem; }
+    .video-wrapper { min-height: 52vh; }
+    .control-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .btn-control { min-height: 56px; padding: .55rem .25rem; flex-direction: row; gap: .35rem; font-size: .78rem; border-right: 1px solid rgba(255,255,255,.28); border-bottom: 0; }
+    .btn-control:last-child { border-right: 0; }
+    .workout-sidebar { height: auto; max-height: none; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; gap: 8px; overflow: visible; border-left: 0; border-top: 1px solid var(--border-color); }
+    .metric-card { min-height: 125px; padding: .75rem .5rem; gap: .4rem; flex-direction: column; text-align: center; border-right: 1px solid var(--border-color); }
+    .demo-card { grid-column: 1 / -1; }
+    .demo-artwork { margin-left: 0; }
+    .demo-card > p { margin-left: 0; }
 }
 </style>
 

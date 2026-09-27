@@ -475,6 +475,10 @@ document.addEventListener('DOMContentLoaded', function() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const canvasId = entry.target.id;
+                const wrapper = entry.target.parentElement;
+
+                // Reveal the wrapper before creating the chart or placeholder.
+                wrapper.classList.add('chart-visible');
 
                 if (canvasId === 'calorieChart') {
                     if (dateLabels.length > 0 && caloriesData.length > 0) {
@@ -496,12 +500,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                entry.target.parentElement.classList.add('chart-visible');
                 observer.unobserve(entry.target);
             }
         });
     }, {
-        threshold: 0.35 // Triggers when 35% of chart is visible while scrolling
+        threshold: 0,
+        rootMargin: '0px 0px 100px 0px' // Prepare charts shortly before they enter view
     });
 
     ['calorieChart', 'exerciseCountChart', 'accuracyChart'].forEach(id => {
