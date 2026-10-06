@@ -19,15 +19,6 @@ python manage.py runserver_plus --cert-file cert.crt 0.0.0.0:8000
 
 Todo list
 * fake movement showing unncessary
-* session management(recorded video of each user is stored)
+* suggestion about current workout
+* scroll days,week
 * UI/UX improvement
-* demo video
-* calender progress view
-* logic for situp and squat
-* save workout error
-* recorded file finding delay
-
-
-edit 
-add @csrf_exempt in views 404
-add 'top_shoulder_y': None, in views 337

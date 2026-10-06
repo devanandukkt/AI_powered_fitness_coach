@@ -183,6 +183,33 @@
     // Ensure Save button is disabled on initial page load
     if (saveBtn) saveBtn.disabled = true;
 
+    function cleanupOnExit() {
+        // Stop camera tracks locally
+        stopCameraStream();
+
+        // Send asynchronous cleanup beacon to Django
+        const cleanupUrl = "{% url 'purge_recordings' %}";
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(cleanupUrl);
+        } else {
+            // Fallback for older browsers
+            fetch(cleanupUrl, { method: 'POST', keepalive: true });
+        }
+    }
+
+    window.addEventListener('pagehide', cleanupOnExit);
+    window.addEventListener('beforeunload', cleanupOnExit);
+    document.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Send cleanup request if navigating away from the exercise page
+            const targetHref = link.getAttribute('href');
+            if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript:')) {
+                cleanupOnExit();
+            }
+        });
+    });
+
+
     // Helper: Stop active webcam stream & frame submission loop
     function stopCameraStream() {
         if (frameInterval) {

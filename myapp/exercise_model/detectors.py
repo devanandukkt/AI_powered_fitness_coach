@@ -133,7 +133,6 @@ class PushupDetector(BaseExerciseDetector):
             # Draw Bottom-Right Counter Box with Calories
             self._draw_counter_box(img, counter, accuracy, calories_burned, w, h)
             return img, counter, accuracy, calories_burned
-
 class SitupDetector(BaseExerciseDetector):
     def process_frame(self, img, session_data):
         h, w, _ = img.shape

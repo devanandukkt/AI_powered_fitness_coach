@@ -1,3 +1,4 @@
+# from time import timezone
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -19,6 +20,16 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+class UserBMI(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bmi_records')
+    bmi = models.FloatField()
+    updated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.user.username} - BMI: {self.bmi} on {self.updated_at.strftime('%Y-%m-%d')}"
 
 
 class WorkoutSession(models.Model):
