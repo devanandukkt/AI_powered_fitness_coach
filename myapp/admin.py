@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
-from .models import Profile
+from .models import Profile, UserBMI
 from .models import WorkoutSession
 
 try:
@@ -18,3 +18,9 @@ class WorkoutSessionAdmin(admin.ModelAdmin):
     def user_id_display(self, obj):
         return obj.user.id
     user_id_display.short_description = 'User ID'
+
+@admin.register(UserBMI)
+class UserBMIAdmin(admin.ModelAdmin):
+    list_display = ('user', 'bmi', 'updated_at')
+    list_filter = ('updated_at',)
+    search_fields = ('user__username',)

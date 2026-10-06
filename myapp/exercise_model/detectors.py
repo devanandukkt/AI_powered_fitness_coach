@@ -133,7 +133,6 @@ class PushupDetector(BaseExerciseDetector):
             # Draw Bottom-Right Counter Box with Calories
             self._draw_counter_box(img, counter, accuracy, calories_burned, w, h)
             return img, counter, accuracy, calories_burned
-
 class SitupDetector(BaseExerciseDetector):
     def process_frame(self, img, session_data):
         h, w, _ = img.shape
@@ -250,18 +249,15 @@ class SquatDetector(BaseExerciseDetector):
                 # Back alignment check (Shoulder - Hip - Knee)
                 back_angle = self.calculate_angle(shoulder, hip, knee)
 
-                is_back_upright = back_angle >= 70.0
+                is_back_upright = back_angle >= 40.0
                 is_form_valid = is_back_upright
 
                 if not is_form_valid:
                     session_data['bad_form_flag'] = True
 
-                # Standing position: Leg extended (Knee angle >= 160 deg)
-                if knee_angle >= 160 and session_data['stage'] != "up":
-                    session_data['stage'] = "up"
 
                 # Deep squat position: Knee angle <= 95 deg
-                if knee_angle <= 95 and is_form_valid and session_data['stage'] == "up":
+                if knee_angle <= 95 and is_form_valid:
                     if session_data['stage'] != "down":
                         session_data['stage'] = "down"
 

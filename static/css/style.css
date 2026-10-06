@@ -668,6 +668,92 @@ a {
   font-size: 0.9rem;
 }
 
+
+.bmi-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(5, 8, 15, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.bmi-modal-backdrop.active {
+    opacity: 1; visibility: visible;
+}
+.bmi-modal-card {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 90%; max-width: 420px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    color: #f3f4f6;
+    position: relative;
+}
+.bmi-modal-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #00f2fe, #4facfe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.bmi-modal-card p {
+    color: #9ca3af;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+.bmi-form-group {
+    margin-bottom: 1.2rem;
+    display: flex; flex-direction: column; gap: 0.4rem;
+}
+.bmi-form-group label {
+    font-size: 0.85rem; color: #d1d5db; font-weight: 500;
+}
+.bmi-input {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+.bmi-input:focus {
+    border-color: #38bdf8;
+}
+.bmi-modal-actions {
+    display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;
+}
+.btn-submit-bmi {
+    background: linear-gradient(135deg, #00f2fe, #4facfe);
+    color: #020617; border: none; font-weight: 600; padding: 0.75rem 1.5rem;
+    border-radius: 8px; cursor: pointer; transition: transform 0.2s;
+}
+.btn-submit-bmi:hover { transform: translateY(-2px); }
+.btn-close-modal {
+    background: transparent; color: #9ca3af; border: 1px solid rgba(255,255,255,0.15);
+    padding: 0.75rem 1.25rem; border-radius: 8px; cursor: pointer;
+}
+.btn-update-bmi-trigger {
+    margin-top: 1rem;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 0.6rem 1.2rem;
+    border-radius: 30px;
+    font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: all 0.3s ease;
+}
+.btn-update-bmi-trigger:hover {
+    background: rgba(56, 189, 248, 0.25);
+    transform: translateY(-2px);
+}
+
 /* Exercise Selection Card */
 
 /* ==========================================================================
@@ -1116,6 +1202,15 @@ a {
   overflow: visible;
 }
 
+.chart-card.full-width {
+    width: 100%;
+    margin-bottom: 2rem;
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
 .chart-card h3 {
   font-size: 1rem;
   color: var(--text-muted);
@@ -1174,6 +1269,56 @@ a {
 .line-chart-wrapper.chart-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+.bmi-category-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+}
+
+.bmi-category-legend .badge-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    color: #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.bmi-category-legend .badge-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.bmi-category-legend .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.bmi-category-legend .dot.underweight { background-color: #60a5fa; color: #60a5fa; }
+.bmi-category-legend .dot.healthy { background-color: #4ade80; color: #4ade80; }
+.bmi-category-legend .dot.overweight { background-color: #fbbf24; color: #fbbf24; }
+.bmi-category-legend .dot.obesity { background-color: #f87171; color: #f87171; }
+
+.bmi-category-legend strong {
+    color: #9ca3af;
+    font-weight: 500;
 }
 
 /* ==========================================================================

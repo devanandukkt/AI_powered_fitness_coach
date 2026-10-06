@@ -16,14 +16,14 @@ from django.http import JsonResponse
 from .exercise_model.detectors import get_exercise_detector
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, update_session_auth_hash, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import WorkoutSession
+from .models import UserBMI, WorkoutSession
 from .models import Profile
 from .forms import (
     RegistrationForm, 
@@ -47,11 +47,26 @@ def register_view(request):
                 password=form.cleaned_data['password']
             )
             messages.success(request, "Account created successfully! Please log in.")
-            return redirect('login')
+            return redirect('personal_info', user_id=user.id)
     else:
         form = RegistrationForm()
 
     return render(request, 'accounts/register.html', {'form': form})
+
+def personal_info_view(request, user_id):
+    target_user = get_object_or_404(User, id=user_id)
+    profile, created = Profile.objects.get_or_create(user=target_user)
+
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile details saved successfully! You can now log in.")
+            return redirect('login')
+    else:
+        form = ProfileUpdateForm(instance=profile)
+
+    return render(request, 'accounts/personal_info.html', {'form': form, 'target_user': target_user})
 
 
 @never_cache
@@ -129,9 +144,28 @@ def forgot_password_view(request):
 
 @login_required
 def home_view(request):
+    user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
+    
     # Use local date to avoid UTC date mismatch issues
+    now = timezone.now()
     today = timezone.localdate()
-    seven_days_ago = today - timedelta(days=6)
+    thirty_days_ago = now - timedelta(days=30)
+    seven_days_ago = now - timedelta(days=7)
+
+    latest_bmi = UserBMI.objects.filter(user=user).order_by('-updated_at').first()
+    show_bmi_popup = False
+    if not latest_bmi or latest_bmi.updated_at < seven_days_ago:
+        show_bmi_popup = True
+
+    # Fetch last 30 days history for Chart.js
+    bmi_history = UserBMI.objects.filter(
+        user=user,
+        updated_at__gte=thirty_days_ago
+    ).order_by('updated_at')
+
+    bmi_dates = [entry.updated_at.strftime("%b %d") for entry in bmi_history]
+    bmi_values = [entry.bmi for entry in bmi_history]
 
     # 1. Fetch Today's Workouts for the user
     todays_workouts = WorkoutSession.objects.filter(
@@ -143,7 +177,7 @@ def home_view(request):
     date_labels = []
     calories_data = []
     for i in range(7):
-        day = seven_days_ago + timedelta(days=i)
+        day = (today - timedelta(days=6 - i))
         date_labels.append(day.strftime("%b %d"))
         
         daily_cals = WorkoutSession.objects.filter(
@@ -154,7 +188,6 @@ def home_view(request):
         calories_data.append(daily_cals)
 
     # 3. Today's Exercise Breakdown
-    # Ensure these keys match EXACTLY what is saved in your WorkoutHistory model's exercise_type field!
     exercise_keys = ['pushup', 'situp', 'squat'] 
     exercise_labels = ['Push Up', 'Sit Up', 'Squat']
     
@@ -162,7 +195,6 @@ def home_view(request):
     exercise_accuracies = []
 
     for key in exercise_keys:
-        # Filter using __iexact to ignore case sensitivity issues (e.g., "Pushup" vs "pushup")
         stats = todays_workouts.filter(exercise_type__iexact=key).aggregate(
             total_reps=Sum('count'),
             avg_acc=Avg('accuracy')
@@ -173,6 +205,11 @@ def home_view(request):
 
     # Pass serialized JSON strings to template
     context = {
+        'profile': profile,
+        'latest_bmi': latest_bmi,
+        'show_bmi_popup': show_bmi_popup,
+        'bmi_dates_json': json.dumps(bmi_dates),
+        'bmi_values_json': json.dumps(bmi_values),
         'todays_workouts': todays_workouts,
         'date_labels_json': json.dumps(date_labels),
         'calories_data_json': json.dumps(calories_data),
@@ -182,6 +219,36 @@ def home_view(request):
     }
 
     return render(request, 'accounts/home.html', context)
+
+
+@login_required
+def update_bmi_view(request):
+    if request.method == 'POST':
+        height_str = request.POST.get('height')
+        weight_str = request.POST.get('weight')
+
+        if height_str and weight_str:
+            height_cm = float(height_str)
+            weight_kg = float(weight_str)
+
+            # 1. Update Profile model with height and weight
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            profile.height = height_cm
+            profile.weight = weight_kg
+            profile.save()
+
+            # 2. Calculate BMI: weight (kg) / height (m)^2
+            height_m = height_cm / 100.0
+            calculated_bmi = round(weight_kg / (height_m ** 2), 2)
+
+            # 3. Create entry in UserBMI model
+            UserBMI.objects.create(
+                user=request.user,
+                bmi=calculated_bmi,
+                updated_at=timezone.now()
+            )
+
+    return redirect('home')
 
 @login_required(login_url='login')
 def profile_view(request):
@@ -201,7 +268,18 @@ def edit_profile_view(request):
     if request.method == 'POST':
         form = ProfileUpdateForm(request.POST, instance=profile)
         if form.is_valid():
-            form.save()
+            updated_profile = form.save()
+            height_cm = updated_profile.height
+            weight_kg = updated_profile.weight
+
+            if height_cm and weight_kg and height_cm > 0:
+                height_m = height_cm / 100.0
+                bmi_val = round(weight_kg / (height_m ** 2), 2)
+                UserBMI.objects.create(
+                    user=request.user,
+                    bmi=bmi_val,
+                    updated_at=timezone.now()
+                )
             messages.success(request, "Your personal details have been updated!")
             return redirect('profile')
         else:
@@ -270,6 +348,32 @@ def get_session_key(request):
         request.session.create()
     return f"session_{request.session.session_key}"
 
+
+# views.py
+
+@csrf_exempt
+def purge_user_recordings(request):
+    """
+    Deletes all temporary recorded videos for the active user session.
+    Triggers when navigating away, clicking Home/Back, or closing the tab.
+    """
+    key = get_session_key(request)
+
+    # 1. Release active VideoWriter if running
+    if key in USER_SESSIONS:
+        session_data = USER_SESSIONS[key]
+        if session_data.get('video_writer') is not None:
+            try:
+                session_data['video_writer'].release()
+            except Exception:
+                pass
+        # Remove from active memory session
+        del USER_SESSIONS[key]
+
+    # 2. Delete all video files matching user session key
+    cleanup_user_recordings(key)
+
+    return JsonResponse({'status': 'cleaned_up'})
 
 def cleanup_user_recordings(key):
     """Deletes all previously recorded video files for this user to save disk space."""

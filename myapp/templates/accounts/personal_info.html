@@ -1,0 +1,51 @@
+{% extends 'accounts/base.html' %}
+{% block title %}Complete Personal Details{% endblock %}
+
+{% block body %}
+<div class="main-content">
+    <div class="auth-card">
+        <h2>Complete Personal Details</h2>
+        <p class="auth-subtitle" style="margin-bottom: 1.5rem; color: #9ca3af;">
+            Please fill in your body metrics to personalize your workout & calorie calculations.
+        </p>
+
+        <!-- Flash messages & form validation errors -->
+        {% if messages or form.errors %}
+          <div class="messages">
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            {% endif %}
+
+            {% if form.errors %}
+              <div class="alert alert-error">
+                {% for field, errors in form.errors.items %}
+                  {% for error in errors %}
+                    <p>{{ field|capfirst }}: {{ error }}</p>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            {% for field in form %}
+              <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                {{ field }}
+              </div>
+            {% endfor %}
+
+            <div class="profile-actions" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-primary" style="width: 100%;">Save & Continue to Login</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
