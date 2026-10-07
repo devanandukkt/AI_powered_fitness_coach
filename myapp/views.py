@@ -7,9 +7,11 @@ import base64
 import time
 import glob
 import subprocess
+from django.db.models import Sum, Avg
 import numpy as np
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
+from calendar import monthrange
 from django.utils import timezone
 from django.db.models import Sum, Avg
 from django.http import JsonResponse
@@ -23,8 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import UserBMI, WorkoutSession
-from .models import Profile
+from .models import UserBMI, WorkoutSession, Profile
 from .forms import (
     RegistrationForm, 
     LoginForm, 
@@ -219,6 +220,105 @@ def home_view(request):
     }
 
     return render(request, 'accounts/home.html', context)
+
+def get_chart_data(request):
+  chart_type = request.GET.get('type')
+  offset = int(request.GET.get('offset', 0))
+  user = request.user
+  today = timezone.now().date()
+
+  if chart_type == 'calorie':
+    end_date = today + timedelta(weeks=offset)
+    start_date = end_date - timedelta(days=6)
+
+    dates = [(start_date + timedelta(days=i)) for i in range(7)]
+    labels = [d.strftime('%b %d') for d in dates]
+
+    calories_data = []
+    for d in dates:
+      total = (
+          WorkoutSession.objects.filter(
+              user=user, created_at__date=d
+          ).aggregate(Sum('calories'))['calories__sum']
+          or 0
+      )
+      calories_data.append(total)
+
+    return JsonResponse({'labels': labels, 'data': calories_data})
+
+  elif chart_type == 'bmi':
+        # 1. Calculate target calendar month range
+        target_year = today.year + ((today.month + offset - 1) // 12)
+        target_month = ((today.month + offset - 1) % 12) + 1
+        _, total_days = monthrange(target_year, target_month)
+
+        start_date = datetime(target_year, target_month, 1).date()
+        end_date = datetime(target_year, target_month, total_days).date()
+
+        # 2. Query UserBMI model and aggregate daily average BMI directly in SQL
+        daily_averages = (
+            UserBMI.objects.filter(
+                user=user,
+                updated_at__date__gte=start_date,
+                updated_at__date__lte=end_date,
+            )
+            .values('updated_at__date')
+            .annotate(avg_bmi=Avg('bmi'))
+        )
+
+        # Map date to rounded average BMI
+        daily_bmi_map = {
+            item['updated_at__date']: round(float(item['avg_bmi']), 1)
+            for item in daily_averages
+        }
+
+        bmi_dates = []
+        bmi_values = []
+        has_data = len(daily_bmi_map) > 0
+
+        # 3. Build array for every day of the month (Oct 01 to Oct 31)
+        for day in range(1, total_days + 1):
+            d = datetime(target_year, target_month, day).date()
+            bmi_dates.append(d.strftime('%b %d'))
+
+            if d > today:
+                # Future days remain null so line stops at today
+                bmi_values.append(None)
+            elif d in daily_bmi_map:
+                # Recorded day displays the exact daily average
+                bmi_values.append(daily_bmi_map[d])
+            else:
+                # Unchanged days remain null (spanGaps: true connects points)
+                bmi_values.append(None)
+
+        return JsonResponse(
+            {'labels': bmi_dates, 'data': bmi_values, 'has_data': has_data}
+        )
+
+  elif chart_type == 'day':
+    target_date = today + timedelta(days=offset)
+    workouts = WorkoutSession.objects.filter(
+        user=user, created_at__date=target_date
+    )
+
+    exercise_types = ['pushup', 'squat', 'situp']
+    counts = []
+    accuracies = []
+
+    for ex in exercise_types:
+      ex_qs = workouts.filter(exercise_type=ex)
+      total_reps = ex_qs.aggregate(Sum('count'))['count__sum'] or 0
+      avg_acc = ex_qs.aggregate(Avg('accuracy'))['accuracy__avg'] or 0
+      counts.append(total_reps)
+      accuracies.append(round(avg_acc, 1))
+
+    return JsonResponse({
+        'labels': ['Push Ups', 'Squats', 'Sit Ups'],
+        'counts': counts,
+        'accuracies': accuracies,
+    })
+
+  return JsonResponse({'error': 'Invalid chart type'}, status=400)
 
 
 @login_required

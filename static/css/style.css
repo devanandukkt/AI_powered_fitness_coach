@@ -1321,6 +1321,52 @@ a {
     font-weight: 500;
 }
 
+.chart-header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.chart-header-nav h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin: 0;
+    min-width: 260px;
+    text-align: center;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #38f9d7;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: rgba(56, 249, 215, 0.2);
+    border-color: #38f9d7;
+    transform: scale(1.08);
+}
+
+.nav-btn:disabled {
+    color: #4b5563;
+    border-color: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.02);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
 /* ==========================================================================
    11. ABOUT, CONTACT & FOOTER
    ========================================================================== */

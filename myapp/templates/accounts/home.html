@@ -10,6 +10,106 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+/* Header Navigation Controls for Charts */
+.chart-header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.chart-header-nav h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    margin: 0;
+    min-width: 280px;
+    text-align: center;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #38f9d7;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: rgba(56, 249, 215, 0.2);
+    border-color: #38f9d7;
+    transform: scale(1.08);
+}
+
+.nav-btn:disabled {
+    color: #4b5563;
+    border-color: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.02);
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+/* Styled Category Legend Badges */
+.bmi-category-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+}
+
+.bmi-category-legend .badge-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    color: #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.bmi-category-legend .badge-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.bmi-category-legend .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.bmi-category-legend .dot.underweight { background-color: #60a5fa; color: #60a5fa; }
+.bmi-category-legend .dot.healthy { background-color: #4ade80; color: #4ade80; }
+.bmi-category-legend .dot.overweight { background-color: #fbbf24; color: #fbbf24; }
+.bmi-category-legend .dot.obesity { background-color: #f87171; color: #f87171; }
+
+.bmi-category-legend strong {
+    color: #9ca3af;
+    font-weight: 500;
+}
+</style>
 {% endblock %}
 
 {% block body %}
@@ -187,11 +287,14 @@
     <section class="analytics-section">
         <h2>Your Fitness Analytics Report</h2>
 
+        <!-- 1. BMI Chart Card with Header Nav -->
         <div class="chart-card full-width">
-            <h3>BMI Progress (Past 30 Days)</h3>
-            <div class="chart-wrapper line-chart-wrapper">
-                <canvas id="bmiChart"></canvas>
+            <div class="chart-header-nav">
+                <button class="nav-btn" id="bmiPrevBtn" onclick="navigateChart('bmi', -1)">&lt;</button>
+                <h3 id="bmiTitle">BMI Progress (Past 30 Days)</h3>
+                <button class="nav-btn" id="bmiNextBtn" onclick="navigateChart('bmi', 1)" disabled>&gt;</button>
             </div>
+
             <div class="bmi-category-legend">
                 <div class="badge-item">
                     <span class="dot underweight"></span>
@@ -210,26 +313,42 @@
                     <span class="label">Obesity <strong>(≥30.0)</strong></span>
                 </div>
             </div>
+
+            <div class="chart-wrapper line-chart-wrapper">
+                <canvas id="bmiChart"></canvas>
+            </div>
         </div>
         
-        <!-- Top Full-Width Line Chart -->
+        <!-- 2. Calorie Chart Card with Header Nav -->
         <div class="chart-card full-width">
-            <h3>Past 7 Days Calorie Burn (kcal)</h3>
+            <div class="chart-header-nav">
+                <button class="nav-btn" id="caloriePrevBtn" onclick="navigateChart('calorie', -1)">&lt;</button>
+                <h3 id="calorieTitle">Past 7 Days Calorie Burn (kcal)</h3>
+                <button class="nav-btn" id="calorieNextBtn" onclick="navigateChart('calorie', 1)" disabled>&gt;</button>
+            </div>
             <div class="chart-wrapper line-chart-wrapper">
                 <canvas id="calorieChart"></canvas>
             </div>
         </div>
 
-        <!-- Side-by-Side Pie/Doughnut Charts for Today's Performance -->
+        <!-- 3. Side-by-Side Doughnut Charts with Navigation -->
         <div class="charts-grid">
             <div class="chart-card">
-                <h3>Today's Exercise Volume Breakdown</h3>
+                <div class="chart-header-nav">
+                    <button class="nav-btn" id="exercisePrevBtn" onclick="navigateChart('day', -1)">&lt;</button>
+                    <h3 id="volumeTitle">Today's Exercise Volume Breakdown</h3>
+                    <button class="nav-btn" id="exerciseNextBtn" onclick="navigateChart('day', 1)" disabled>&gt;</button>
+                </div>
                 <div class="chart-wrapper pie-chart-wrapper">
                     <canvas id="exerciseCountChart"></canvas>
                 </div>
             </div>
             <div class="chart-card">
-                <h3>Today's Average Form Accuracy (%)</h3>
+                <div class="chart-header-nav">
+                    <button class="nav-btn" id="accuracyPrevBtn" onclick="navigateChart('day', -1)">&lt;</button>
+                    <h3 id="accuracyTitle">Today's Average Form Accuracy (%)</h3>
+                    <button class="nav-btn" id="accuracyNextBtn" onclick="navigateChart('day', 1)" disabled>&gt;</button>
+                </div>
                 <div class="chart-wrapper pie-chart-wrapper">
                     <canvas id="accuracyChart"></canvas>
                 </div>
@@ -350,13 +469,128 @@
 
 </div>
 
-<!-- JavaScript Modal Handler & Chart.js Script -->
+<!-- Navigation State Handlers & Chart.js Initialization -->
 <script>
+// Global Chart references
+// 1. Global Chart Instance References
+let calorieChartInstance = null;
+let bmiChartInstance = null;
+let exerciseCountChartInstance = null;
+let accuracyChartInstance = null;
+
+// Navigation state offsets
+let bmiMonthOffset = 0;      // 0 = past 30 days, -1 = -1 month
+let calorieWeekOffset = 0;   // 0 = past 7 days, -1 = previous 7 days
+let dayOffset = 0;           // 0 = today, -1 = yesterday
+
+function navigateChart(chartType, direction) {
+    if (chartType === 'bmi') {
+        bmiMonthOffset += direction;
+        if (bmiMonthOffset > 0) bmiMonthOffset = 0;
+        updateBmiView();
+    } else if (chartType === 'calorie') {
+        calorieWeekOffset += direction;
+        if (calorieWeekOffset > 0) calorieWeekOffset = 0;
+        updateCalorieView();
+    } else if (chartType === 'day') {
+        dayOffset += direction;
+        if (dayOffset > 0) dayOffset = 0;
+        updateDailyViews();
+    }
+}
+
+function updateBmiView() {
+    const nextBtn = document.getElementById('bmiNextBtn');
+    const title = document.getElementById('bmiTitle');
+    if (nextBtn) nextBtn.disabled = (bmiMonthOffset >= 0);
+
+    const now = new Date();
+    now.setMonth(now.getMonth() + bmiMonthOffset);
+    const monthLabel = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    if (title) {
+        title.innerText = `BMI Progress (${monthLabel})`;
+    }
+
+    fetchChartData('bmi', bmiMonthOffset, (data) => {
+        if (bmiChartInstance) {
+            bmiChartInstance.data.labels = [...data.labels];
+            bmiChartInstance.data.datasets[0].data = [...data.data];
+            bmiChartInstance.update();
+        }
+    });
+}
+
+function updateCalorieView() {
+    const nextBtn = document.getElementById('calorieNextBtn');
+    const title = document.getElementById('calorieTitle');
+    if (nextBtn) nextBtn.disabled = (calorieWeekOffset >= 0);
+
+    if (title) {
+        title.innerText = calorieWeekOffset === 0 
+            ? 'Past 7 Days Calorie Burn (kcal)' 
+            : `Calorie Burn (${Math.abs(calorieWeekOffset * 7)}–${Math.abs((calorieWeekOffset - 1) * 7)} Days Ago)`;
+    }
+
+    // Fetch new Calorie data and update chart
+    fetchChartData('calorie', calorieWeekOffset, (data) => {
+        if (calorieChartInstance) {
+            calorieChartInstance.data.labels = data.labels;
+            calorieChartInstance.data.datasets[0].data = data.data;
+            calorieChartInstance.update();
+        }
+    });
+}
+
+function updateDailyViews() {
+    const nextCountBtn = document.getElementById('exerciseNextBtn');
+    const nextAccBtn = document.getElementById('accuracyNextBtn');
+    const volTitle = document.getElementById('volumeTitle');
+    const accTitle = document.getElementById('accuracyTitle');
+
+    const isToday = (dayOffset === 0);
+    if (nextCountBtn) nextCountBtn.disabled = isToday;
+    if (nextAccBtn) nextAccBtn.disabled = isToday;
+
+    let dayLabel = "Today";
+    if (dayOffset === -1) dayLabel = "Yesterday";
+    else if (dayOffset < -1) {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + dayOffset);
+        dayLabel = targetDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+
+    if (volTitle) volTitle.innerText = `${dayLabel}'s Exercise Volume Breakdown`;
+    if (accTitle) accTitle.innerText = `${dayLabel}'s Average Form Accuracy (%)`;
+
+    // Fetch daily doughnut chart data and update both charts
+    fetchChartData('day', dayOffset, (data) => {
+        if (exerciseCountChartInstance) {
+            exerciseCountChartInstance.data.labels = data.labels;
+            exerciseCountChartInstance.data.datasets[0].data = data.counts;
+            exerciseCountChartInstance.update();
+        }
+        if (accuracyChartInstance) {
+            accuracyChartInstance.data.labels = data.labels;
+            accuracyChartInstance.data.datasets[0].data = data.accuracies;
+            accuracyChartInstance.update();
+        }
+    });
+}
+
+function fetchChartData(type, offset, callback) {
+    fetch(`/api/get-chart-data/?type=${type}&offset=${offset}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => callback(data))
+        .catch(err => console.error('Error fetching chart data:', err));
+}
+
 function closeBmiModal() {
     const modal = document.getElementById('bmiModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
+    if (modal) modal.classList.remove('active');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -402,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 1. Calorie Chart Configuration
-    const getCalorieChartConfig = () => ({
+    const calorieConfig = {
         type: 'line',
         data: {
             labels: dateLabels,
@@ -420,53 +654,25 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                x: {
-                    type: 'number',
-                    easing: 'linear',
-                    duration: 1500,
-                    from: NaN,
-                    delay(ctx) {
-                        if (ctx.type !== 'data' || ctx.xStarted) return 0;
-                        ctx.xStarted = true;
-                        return ctx.index * 120;
-                    }
-                },
-                y: {
-                    type: 'number',
-                    easing: 'easeOutQuart',
-                    duration: 1500,
-                    from: (ctx) => ctx.chart.scales.y.getPixelForValue(0),
-                    delay(ctx) {
-                        if (ctx.type !== 'data' || ctx.yStarted) return 0;
-                        ctx.yStarted = true;
-                        return ctx.index * 120;
-                    }
-                }
-            },
             scales: {
                 x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
                 y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
             },
             plugins: { legend: { display: false } }
         }
-    });
-    function createBmiGradient(ctx, chartArea) {
-        const chartHeight = chartArea.bottom - chartArea.top;
-        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    };
 
-        // Map Y-axis min/max (e.g. 15 to 35) to gradient color stops
-        // Blue (<18.5) -> Green (18.5-24.9) -> Yellow (25.0-29.9) -> Red (>=30)
+    function createBmiGradient(ctx, chartArea) {
+        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
         gradient.addColorStop(0.00, 'rgba(59, 130, 246, 0.25)'); // Underweight (Blue)
         gradient.addColorStop(0.35, 'rgba(34, 197, 94, 0.25)');  // Healthy Weight (Green)
         gradient.addColorStop(0.65, 'rgba(245, 158, 11, 0.25)'); // Overweight (Yellow)
         gradient.addColorStop(1.00, 'rgba(239, 68, 68, 0.25)');  // Obesity (Red)
-
         return gradient;
     }
 
     // 2. BMI Chart Configuration with Zone Classification
-    const getBmiChartConfig = () => ({
+    const bmiConfig = {
         type: 'line',
         data: {
             labels: bmiDates,
@@ -483,9 +689,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 borderWidth: 3,
                 fill: true,
                 tension: 0.3,
+                spanGaps: true,
                 pointBackgroundColor: '#ffffff',
                 pointBorderColor: '#00f2fe',
-                pointRadius: 5
             }]
         },
         options: {
@@ -493,85 +699,53 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
-                y: { 
-                    suggestedMin: 15,
-                    suggestedMax: 35,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
-                    ticks: { color: '#9ca3af' } 
-                }
+                y: { suggestedMin: 15, suggestedMax: 35, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
             },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => {
-                            const val = context.parsed.y;
-                            let category = '';
-                            if (val < 18.5) category = 'Underweight';
-                            else if (val <= 24.9) category = 'Healthy Weight';
-                            else if (val <= 29.9) category = 'Overweight';
-                            else category = 'Obesity';
+            plugins: { legend: { display: false } }
+        }
+    };
 
-                            return ` BMI: ${val} (${category})`;
+    // 3. Doughnut Chart Configuration (Volume & Accuracy)
+    function getDoughnutConfig(dataValues, unit) {
+        return {
+            type: 'doughnut',
+            data: {
+                labels: exerciseLabels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: chartColors,
+                    hoverBackgroundColor: hoverChartColors,
+                    borderWidth: 3,
+                    borderColor: '#0a101c',
+                    hoverBorderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#f3f4f6', usePointStyle: true } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label || ''}: ${ctx.parsed || 0}${unit}`
                         }
                     }
                 }
             }
-        }
-    });
+        };
+    }
 
-    // 3. Doughnut Chart Configuration (Volume & Accuracy)
-    const getDoughnutChartConfig = (dataValues, unit) => ({
-        type: 'doughnut',
-        data: {
-            labels: exerciseLabels,
-            datasets: [{
-                data: dataValues,
-                backgroundColor: chartColors,
-                hoverBackgroundColor: hoverChartColors,
-                borderWidth: 3,
-                borderColor: '#0a101c',
-                hoverBorderColor: '#ffffff',
-                hoverBorderWidth: 4,
-                hoverOffset: 18,
-                spacing: 4,
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: 20 },
-            animation: {
-                animateScale: true,
-                animateRotate: true,
-                duration: 1800,
-                easing: 'easeInOutQuart',
-                delay(ctx) {
-                    if (ctx.type !== 'data') return 0;
-                    return ctx.dataIndex * 300;
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#f3f4f6', font: { family: 'Inter', size: 12 }, usePointStyle: true, padding: 18 }
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(7, 9, 14, 0.95)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#60a5fa',
-                    borderColor: 'rgba(59, 130, 246, 0.4)',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        label: (context) => ` ${context.label || ''}: ${context.parsed || 0}${unit}`
-                    }
-                }
-            }
-        }
-    });
+    const calCanvas = document.getElementById('calorieChart');
+    if (calCanvas) calorieChartInstance = new Chart(calCanvas, calorieConfig);
+
+    const bmiCanvas = document.getElementById('bmiChart');
+    if (bmiCanvas) bmiChartInstance = new Chart(bmiCanvas, bmiConfig);
+
+    const countCanvas = document.getElementById('exerciseCountChart');
+    if (countCanvas) exerciseCountChartInstance = new Chart(countCanvas, getDoughnutConfig(exerciseCounts, ' reps'));
+
+    const accCanvas = document.getElementById('accuracyChart');
+    if (accCanvas) accuracyChartInstance = new Chart(accCanvas, getDoughnutConfig(exerciseAccuracies, '% Accuracy'));
 
     // IntersectionObserver for lazy chart rendering on scroll
     const chartObserver = new IntersectionObserver((entries, observer) => {

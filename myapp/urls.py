@@ -13,6 +13,7 @@ urlpatterns = [
     path('profile/change-password/', views.change_password_view, name='change_password'),
     path('profile/delete/', views.delete_user_view, name='delete_user'),
     path('update-bmi/', views.update_bmi_view, name='update_bmi'),
+    path('api/get-chart-data/', views.get_chart_data, name='get_chart_data'),
     path('exercise/', views.exercise_view, name='exercise'),
     path('exercise/start/', views.start_exercise_session, name='start_exercise'),
     path('exercise/process/', views.process_exercise_frame, name='process_exercise_frame'),
