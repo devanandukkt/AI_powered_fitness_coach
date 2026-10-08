@@ -137,28 +137,36 @@ class SitupDetector(BaseExerciseDetector):
     def process_frame(self, img, session_data):
         h, w, _ = img.shape
         image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-        detection_result = self.detector.detect(mp_image)
+        detection_result = self.detector.detect(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+        )
 
         counter = session_data['counter']
         total_attempts = session_data['total_attempts']
         accuracy = 100.0 if total_attempts == 0 else round((counter / total_attempts) * 100, 1)
         calories_burned = round(counter * 0.50, 2)  # ~0.50 kcal per sit-up
+        session_data.setdefault('situp_start_frames', 0)
 
         if detection_result.pose_landmarks and len(detection_result.pose_landmarks) > 0:
             lm = detection_result.pose_landmarks[0]
-            # Shoulder, Hip, Knee, Ankle
-            required_indices = [11, 23, 25, 27]
+            # Use the clearer side so either side can face the camera.
+            left_indices = (11, 23, 25, 27)
+            right_indices = (12, 24, 26, 28)
+            left_score = min(lm[idx].visibility for idx in left_indices)
+            right_score = min(lm[idx].visibility for idx in right_indices)
+            side_indices = left_indices if left_score >= right_score else right_indices
 
-            if not all(lm[idx].visibility >= 0.6 for idx in required_indices):
+            if max(left_score, right_score) < 0.6:
+                session_data['situp_start_frames'] = 0
                 cv2.rectangle(img, (10, 10), (w - 10, 60), (0, 0, 255), -1)
                 cv2.putText(img, "Place camera at SIDE view & show FULL body", 
                             (20, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
             else:
-                shoulder = [lm[11].x * w, lm[11].y * h]
-                hip      = [lm[23].x * w, lm[23].y * h]
-                knee     = [lm[25].x * w, lm[25].y * h]
-                ankle    = [lm[27].x * w, lm[27].y * h]
+                shoulder_idx, hip_idx, knee_idx, ankle_idx = side_indices
+                shoulder = [lm[shoulder_idx].x * w, lm[shoulder_idx].y * h]
+                hip = [lm[hip_idx].x * w, lm[hip_idx].y * h]
+                knee = [lm[knee_idx].x * w, lm[knee_idx].y * h]
+                ankle = [lm[ankle_idx].x * w, lm[ankle_idx].y * h]
 
                 # Main sit-up flexion angle (Shoulder - Hip - Knee)
                 hip_angle = self.calculate_angle(shoulder, hip, knee)
@@ -168,50 +176,93 @@ class SitupDetector(BaseExerciseDetector):
                 is_knees_bent = 40 <= knee_angle <= 130
                 is_form_valid = is_knees_bent
 
-                if not is_form_valid:
+                stage = session_data.get('stage')
+
+                # Validate the start pose and retain its result for the full attempt.
+                torso_from_vertical = self.calculate_vertical_deviation(shoulder, hip)
+                torso_length = np.linalg.norm(np.subtract(shoulder, hip))
+                shoulder_below_hip = shoulder[1] - hip[1] <= 0.10 * torso_length
+                knee_is_lowest = knee[1] >= max(
+                    shoulder[1], hip[1], ankle[1]
+                )
+                is_start_pose = (
+                    hip_angle >= 130
+                    and torso_from_vertical >= 70.0
+                    and shoulder_below_hip
+                    and not knee_is_lowest
+                )
+
+                if stage != "down":
+                    # Track a sustained bottom-like pose even when its form is
+                    # invalid so the attempt can be rejected at completion.
+                    if hip_angle >= 130:
+                        session_data['situp_start_frames'] += 1
+                    else:
+                        session_data['situp_start_frames'] = 0
+
+                    if session_data['situp_start_frames'] >= 4:
+                        session_data['stage'] = "down"
+                        session_data['situp_invalid_start'] = not is_start_pose
+                        session_data['bad_form_flag'] = (
+                            session_data['situp_invalid_start'] or not is_form_valid
+                        )
+                        session_data['situp_start_frames'] = 0
+                elif stage == "down" and not is_form_valid:
                     session_data['bad_form_flag'] = True
 
-                # Down position: Lying down flat (hip angle open, ~130-180 deg)
-                if hip_angle >= 130 and session_data['stage'] != "down":
-                    session_data['stage'] = "down"
-
-                # Up position: Sitting up fully (hip angle closed, <= 60 deg)
-                if hip_angle <= 60 and session_data['stage'] == "down":
+                if hip_angle <= 65 and session_data.get('stage') == "down":
                     session_data['total_attempts'] += 1
                     if not session_data['bad_form_flag']:
                         session_data['counter'] += 1
                     session_data['stage'] = "up"
                     session_data['bad_form_flag'] = False
+                    session_data['situp_invalid_start'] = False
+                elif session_data.get('stage') is None and hip_angle <= 65:
+                    # Starting in the seated position must not count as a rep.
+                    session_data['stage'] = "up"
 
                 counter = session_data['counter']
                 total_attempts = session_data['total_attempts']
                 accuracy = round((counter / total_attempts) * 100, 1) if total_attempts > 0 else 100.0
                 calories_burned = round(counter * 0.50, 2)
 
-                per = np.interp(hip_angle, (50, 140), (100, 0))
-                bar = np.interp(hip_angle, (50, 140), (100, 400))
+                per = np.interp(hip_angle, (65, 130), (100, 0))
+                bar = np.interp(hip_angle, (65, 130), (100, 400))
 
-                if is_form_valid:
+                rep_invalid = session_data.get('bad_form_flag', False)
+                invalid_start = session_data.get('situp_invalid_start', False)
+                is_start_pose_too_tilted = torso_from_vertical < 55.0
+                if rep_invalid and invalid_start:
+                    status_msg, banner_color = "Invalid rep: starting position", (0, 0, 255)
+                elif rep_invalid:
+                    status_msg, banner_color = "Keep Knees Bent!", (0, 0, 255)
+                elif stage != "down" and hip_angle >= 130 and is_start_pose_too_tilted:
+                    status_msg, banner_color = "Lie flat to start", (0, 0, 255)
+                elif is_form_valid:
                     status_msg, banner_color = "Good Form!", (0, 200, 0)
                 else:
                     status_msg, banner_color = "Keep Knees Bent!", (0, 0, 255)
 
                 # Draw skeleton lines
+                indicator_color = (0, 0, 255) if rep_invalid else (255, 255, 255)
                 cv2.rectangle(img, (150, 20), (640, 60), banner_color, -1)
                 cv2.putText(img, status_msg, (160, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-                cv2.line(img, tuple(np.int32(shoulder)), tuple(np.int32(hip)), (255, 255, 255), 3)
-                cv2.line(img, tuple(np.int32(hip)), tuple(np.int32(knee)), (255, 255, 255), 3)
+                cv2.line(img, tuple(np.int32(shoulder)), tuple(np.int32(hip)), indicator_color, 3)
+                cv2.line(img, tuple(np.int32(hip)), tuple(np.int32(knee)), indicator_color, 3)
 
-                knee_color = (0, 255, 0) if is_knees_bent else (0, 0, 255)
+                knee_color = (0, 0, 255) if rep_invalid or not is_knees_bent else (0, 255, 0)
                 cv2.line(img, tuple(np.int32(knee)), tuple(np.int32(ankle)), knee_color, 4)
 
                 for pt in [shoulder, hip, knee, ankle]:
-                    cv2.circle(img, tuple(np.int32(pt)), 6, (255, 0, 255), -1)
+                    point_color = (0, 0, 255) if rep_invalid else (255, 0, 255)
+                    cv2.circle(img, tuple(np.int32(pt)), 6, point_color, -1)
 
                 cv2.rectangle(img, (w - 50, 100), (w - 20, 400), (50, 50, 50), 2)
                 cv2.rectangle(img, (w - 50, int(bar)), (w - 20, 400), banner_color, -1)
                 cv2.putText(img, f"{int(per)}%", (w - 65, 435), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        else:
+            session_data['situp_start_frames'] = 0
 
         self._draw_counter_box(img, counter, accuracy, calories_burned, w, h)
         return img, counter, accuracy, calories_burned
@@ -221,8 +272,9 @@ class SquatDetector(BaseExerciseDetector):
     def process_frame(self, img, session_data):
         h, w, _ = img.shape
         image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-        detection_result = self.detector.detect(mp_image)
+        detection_result = self.detector.detect(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+        )
 
         counter = session_data['counter']
         total_attempts = session_data['total_attempts']
@@ -231,56 +283,61 @@ class SquatDetector(BaseExerciseDetector):
 
         if detection_result.pose_landmarks and len(detection_result.pose_landmarks) > 0:
             lm = detection_result.pose_landmarks[0]
-            # Shoulder, Hip, Knee, Ankle
-            required_indices = [11, 23, 25, 27]
+            # Use whichever side is more visible so either side can face the camera.
+            left_indices = (11, 23, 25, 27)
+            right_indices = (12, 24, 26, 28)
+            left_score = min(lm[idx].visibility for idx in left_indices)
+            right_score = min(lm[idx].visibility for idx in right_indices)
+            side_indices = left_indices if left_score >= right_score else right_indices
 
-            if not all(lm[idx].visibility >= 0.6 for idx in required_indices):
+            if max(left_score, right_score) < 0.6:
                 cv2.rectangle(img, (10, 10), (w - 10, 60), (0, 0, 255), -1)
-                cv2.putText(img, "Place camera at SIDE view & show FULL body", 
+                cv2.putText(img, "Show your full body from the side", 
                             (20, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
             else:
-                shoulder = [lm[11].x * w, lm[11].y * h]
-                hip      = [lm[23].x * w, lm[23].y * h]
-                knee     = [lm[25].x * w, lm[25].y * h]
-                ankle    = [lm[27].x * w, lm[27].y * h]
+                shoulder_idx, hip_idx, knee_idx, ankle_idx = side_indices
+                shoulder = [lm[shoulder_idx].x * w, lm[shoulder_idx].y * h]
+                hip = [lm[hip_idx].x * w, lm[hip_idx].y * h]
+                knee = [lm[knee_idx].x * w, lm[knee_idx].y * h]
+                ankle = [lm[ankle_idx].x * w, lm[ankle_idx].y * h]
 
-                # Knee flexion angle (Hip - Knee - Ankle)
                 knee_angle = self.calculate_angle(hip, knee, ankle)
-                # Back alignment check (Shoulder - Hip - Knee)
-                back_angle = self.calculate_angle(shoulder, hip, knee)
+                torso_lean = self.calculate_vertical_deviation(hip, shoulder)
+                is_back_upright = torso_lean <= 55.0
+                knee_below_shoulder = knee[1] > shoulder[1]
+                is_form_valid = is_back_upright and knee_below_shoulder
+                stage = session_data.get('stage')
 
-                is_back_upright = back_angle >= 40.0
-                is_form_valid = is_back_upright
-
-                if not is_form_valid:
+                # Hysteresis avoids stage flicker around the depth and standing limits.
+                if stage != "down" and knee_angle <= 100:
+                    session_data['stage'] = "down"
+                    session_data['bad_form_flag'] = not is_form_valid
+                elif stage == "down" and not is_form_valid:
                     session_data['bad_form_flag'] = True
 
-
-                # Deep squat position: Knee angle <= 95 deg
-                if knee_angle <= 95 and is_form_valid:
-                    if session_data['stage'] != "down":
-                        session_data['stage'] = "down"
-
-                # Return to standing position completes the rep
-                if knee_angle >= 160 and session_data['stage'] == "down":
+                if knee_angle >= 160 and session_data.get('stage') == "down":
                     session_data['total_attempts'] += 1
                     if not session_data['bad_form_flag']:
                         session_data['counter'] += 1
                     session_data['stage'] = "up"
                     session_data['bad_form_flag'] = False
+                elif session_data.get('stage') is None and knee_angle >= 160:
+                    session_data['stage'] = "up"
 
                 counter = session_data['counter']
                 total_attempts = session_data['total_attempts']
                 accuracy = round((counter / total_attempts) * 100, 1) if total_attempts > 0 else 100.0
                 calories_burned = round(counter * 0.32, 2)
 
-                per = np.interp(knee_angle, (90, 160), (100, 0))
-                bar = np.interp(knee_angle, (90, 160), (100, 400))
+                per = np.interp(knee_angle, (100, 160), (100, 0))
+                bar = np.interp(knee_angle, (100, 160), (100, 400))
 
-                if is_form_valid:
-                    status_msg, banner_color = "Good Form!", (0, 200, 0)
-                else:
+                if not knee_below_shoulder:
+                    status_msg, banner_color = "Keep Form Upright!", (0, 0, 255)
+                elif not is_back_upright:
                     status_msg, banner_color = "Keep Chest Up!", (0, 0, 255)
+                else:
+                    status_msg, banner_color = "Good Form!", (0, 200, 0)
 
                 # Draw skeleton lines
                 cv2.rectangle(img, (150, 20), (640, 60), banner_color, -1)
