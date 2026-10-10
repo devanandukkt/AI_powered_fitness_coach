@@ -1,42 +1,130 @@
 {% extends 'accounts/base.html' %}
-{% block title %}User Profile{% endblock %}
+{% block title %}My Profile{% endblock %}
 
 {% block body %}
-<div class="profile-container">
-    <div class="auth-card">
-        <h2>User Profile</h2>
-
-        {% if messages %}
-          <div class="messages">
-            {% for message in messages %}
-              <div class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
-                {{ message }}
-              </div>
-            {% endfor %}
+<main class="profile-page">
+    {% if messages %}
+      <div class="messages profile-messages">
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+            {{ message }}
           </div>
-        {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
 
-        <div class="profile-section">
-            <h3>Login Credentials</h3>
-            <p><strong>Username:</strong> {{ request.user.username }}</p>
-            <p><strong>Email:</strong> {{ request.user.email }}</p>
-            <p><strong>Member Since:</strong> {{ request.user.date_joined|date:"F d, Y" }}</p>
+    <section class="profile-hero" aria-label="Profile overview">
+        <div class="profile-avatar" aria-hidden="true">{{ request.user.username|first|upper }}</div>
+        <div class="profile-identity">
+            <p class="profile-eyebrow">YOUR ACCOUNT</p>
+            <h1>{{ profile.full_name|default:request.user.username }}</h1>
+            <p class="profile-handle">@{{ request.user.username }}</p>
+            <p class="profile-member-since">Member since {{ request.user.date_joined|date:"F Y" }}</p>
         </div>
+        <a href="{% url 'edit_profile' %}" class="btn-secondary profile-edit-button">Change personal details</a>
+        <div class="profile-hero-meta">
+            <span class="profile-status-dot"></span>
+            <span>Account active</span>
+        </div>
+    </section>
 
-        <div class="profile-section">
-            <h3>Personal Details</h3>
-            <p><strong>Full Name:</strong> {{ request.user.profile.full_name|default:"Not Provided" }}</p>
-            <p><strong>Age:</strong> {{ request.user.profile.age|default:"N/A" }}</p>
-            <p><strong>Gender:</strong> {{ request.user.profile.gender|default:"N/A" }}</p>
-            <p><strong>Height:</strong> {% if request.user.profile.height %}{{ request.user.profile.height }} cm{% else %}N/A{% endif %}</p>
-            <p><strong>Weight:</strong> {% if request.user.profile.weight %}{{ request.user.profile.weight }} kg{% else %}N/A{% endif %}</p>
-        </div>
+    <div class="profile-content-grid">
+        <section class="profile-info-card" aria-labelledby="account-information-title">
+            <div class="profile-card-heading">
+                <div>
+                    <p class="profile-eyebrow">ACCOUNT</p>
+                    <h2 id="account-information-title">Your information</h2>
+                </div>
+            </div>
 
-        <div class="profile-actions">
-            <a href="{% url 'edit_profile' %}" class="btn-primary">Edit Personal Details</a>
-            <a href="{% url 'change_password' %}" class="btn-secondary">Change Password</a>
-            <a href="{% url 'delete_user' %}" class="btn-danger">Delete Account</a>
-        </div>
+            <div class="profile-info-section">
+                <h3>Login credentials</h3>
+                <dl class="profile-detail-list">
+                    <div class="profile-detail-row">
+                        <dt>Username</dt>
+                        <dd>{{ request.user.username }}</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>Email</dt>
+                        <dd>{{ request.user.email|default:"Not provided" }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="profile-info-section personal-details-section">
+                <h3>Personal details</h3>
+                <dl class="profile-detail-list">
+                    <div class="profile-detail-row">
+                        <dt>Full name</dt>
+                        <dd>{{ profile.full_name|default:"Not provided" }}</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>Age</dt>
+                        <dd>{% if profile.age %}{{ profile.age }} years{% else %}Not provided{% endif %}</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>Gender</dt>
+                        <dd>{{ profile.gender|default:"Not provided" }}</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>Height</dt>
+                        <dd>{% if profile.height %}{{ profile.height }} cm{% else %}Not provided{% endif %}</dd>
+                    </div>
+                    <div class="profile-detail-row">
+                        <dt>Weight</dt>
+                        <dd>{% if profile.weight %}{{ profile.weight }} kg{% else %}Not provided{% endif %}</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="profile-calendar-card" aria-labelledby="activity-calendar-title">
+            <div class="profile-card-heading calendar-card-heading">
+                <div>
+                    <p class="profile-eyebrow">YOUR ROUTINE</p>
+                    <h2 id="activity-calendar-title">Activity calendar</h2>
+                </div>
+                <span class="calendar-active-count">{{ active_days_count }} active {% if active_days_count == 1 %}day{% else %}days{% endif %}</span>
+            </div>
+
+            <div class="calendar-navigation">
+                <a class="calendar-nav-button" href="?month={{ previous_month.month }}&amp;year={{ previous_month.year }}" aria-label="Previous month">‹</a>
+                <h3>{{ calendar_month }} {{ calendar_year }}</h3>
+                <a class="calendar-nav-button" href="?month={{ next_month.month }}&amp;year={{ next_month.year }}" aria-label="Next month">›</a>
+            </div>
+
+            <div class="activity-calendar" role="grid" aria-label="Activity in {{ calendar_month }} {{ calendar_year }}">
+                <div class="calendar-weekdays" role="row">
+                    <span role="columnheader">S</span><span role="columnheader">M</span><span role="columnheader">T</span><span role="columnheader">W</span><span role="columnheader">T</span><span role="columnheader">F</span><span role="columnheader">S</span>
+                </div>
+                {% for week in calendar_weeks %}
+                <div class="calendar-week" role="row">
+                    {% for cell in week %}
+                        {% if cell.day %}
+                        <span class="calendar-day{% if cell.active %} is-active{% endif %}{% if cell.is_today %} is-today{% endif %}" role="gridcell" aria-label="{{ calendar_month }} {{ cell.day }}{% if cell.active %}, active day{% endif %}{% if cell.is_today %}, today{% endif %}">{{ cell.day }}</span>
+                        {% else %}
+                        <span class="calendar-day is-empty" role="gridcell" aria-hidden="true"></span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="calendar-legend"><span class="calendar-legend-dot"></span><span>Day you visited AI_Fit</span></div>
+            <p class="calendar-note">Your activity is marked when you use the app while signed in.</p>
+        </section>
     </div>
-</div>
+
+    <section class="profile-security-card" aria-labelledby="profile-security-title">
+        <div>
+            <p class="profile-eyebrow">SECURITY</p>
+            <h2 id="profile-security-title">Account settings</h2>
+            <p>Manage your password or remove your account.</p>
+        </div>
+        <div class="profile-security-actions">
+            <a href="{% url 'change_password' %}" class="btn-secondary">Change password</a>
+            <a href="{% url 'delete_user' %}" class="btn-danger">Delete account</a>
+        </div>
+    </section>
+</main>
 {% endblock %}

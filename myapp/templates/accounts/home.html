@@ -146,6 +146,71 @@
         </div>
     </section>
 
+    <!-- AI Suggestion Dashboard Card with Button -->
+    <div class="ai-coach-card">
+        <div class="ai-coach-header">
+            <h3 style="margin: 0;">AI Fitness Coach</h3>
+        </div>
+        <p class="ai-coach-description">
+            Leverage advanced artificial intelligence to thoroughly analyze your past week's workout performance and BMI trends.
+            Receive tailored exercise targets specifically optimized for your body composition and rep counts.
+            Unlock actionable, personalized dietary advice designed to help you reach your ultimate fitness goals efficiently.
+        </p>
+        <button onclick="openAiModal()" class="ai-suggest-btn">Get Suggestion</button>
+    </div>
+
+    <!-- AI Coach Popup Modal -->
+    <div id="aiModal" class="ai-modal-overlay">
+        <div class="ai-modal-card">
+            
+            <!-- Close Button -->
+            <button onclick="closeAiModal()" class="ai-modal-close">&times;</button>
+            
+            <h3 class="ai-modal-title"> AI Fitness Coach Insights</h3>
+            
+            <!-- Loading State with Spinner Animation -->
+            <div id="aiModalLoading" class="ai-modal-loading">
+                <div class="ai-spinner"></div>
+                <p>Analyzing your workout history and BMI trends...</p>
+            </div>
+            
+            <!-- Three Content Containers -->
+            <div id="aiModalContent" class="ai-modal-content-wrapper">
+                <div class="ai-section-box">
+                    <h4 class="ai-section-title">Current Workout Analysis</h4>
+                    <p id="currentWorkoutText" class="ai-section-text"></p>
+                </div>
+                
+                <div class="ai-section-box">
+                    <h4 class="ai-section-title">BMI & Workout Recommendation</h4>
+                    <p id="workoutRecText" class="ai-section-text"></p>
+                </div>
+                
+                <div class="ai-section-box">
+                    <h4 class="ai-section-title">Personalized Diet Plan</h4>
+                    <p id="dietPlanText" class="ai-section-text"></p>
+                </div>
+
+                <!-- Get More Information / Chat Toggle -->
+                <div class="ai-more-info-container">
+                    <button onclick="toggleAiChat()" class="ai-secondary-btn" id="aiChatToggleBtn">💬 Get More Information / Ask Follow-up</button>
+                    
+                    <!-- Chat Drawer -->
+                    <div id="aiChatBox" class="ai-chat-box">
+                        <div id="aiChatMessages" class="ai-chat-messages">
+                            <div class="ai-chat-msg assistant">Hello! Ask me any questions about your workouts, form adjustments, or BMI targets based on your recent data.</div>
+                        </div>
+                        <div class="ai-chat-input-area">
+                            <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="e.g., How can I improve my squat form?" onkeypress="handleChatKeyPress(event)">
+                            <button onclick="sendAiChatMessage()" class="ai-send-btn">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- Exercise Selection Section -->
     <section class="exercise-select-section">
         <div class="exercise-section-header">
@@ -471,6 +536,183 @@
 
 <!-- Navigation State Handlers & Chart.js Initialization -->
 <script>
+
+function openAiModal() {
+    document.getElementById('aiModal').style.display = 'flex';
+    document.getElementById('aiModalLoading').style.display = 'block';
+    document.getElementById('aiModalContent').style.display = 'none';
+
+    fetch('/api/ai-insights/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('aiModalLoading').style.display = 'none';
+            document.getElementById('aiModalContent').style.display = 'flex';
+            
+            if (data.status === 'success') {
+                parseAndDisplayInsights(data.insights);
+            } else {
+                document.getElementById('currentWorkoutText').innerText = "Error: " + data.message;
+                document.getElementById('workoutRecText').innerText = "";
+                document.getElementById('dietPlanText').innerText = "";
+            }
+        })
+        .catch(err => {
+            document.getElementById('aiModalLoading').style.display = 'none';
+            document.getElementById('aiModalContent').style.display = 'flex';
+            document.getElementById('currentWorkoutText').innerText = "Failed to fetch AI insights. Please try again later.";
+        });
+}
+
+function closeAiModal() {
+    // Hide the modal overlay
+    document.getElementById('aiModal').style.display = 'none';
+    
+    // Reset modal loading/content states for next time
+    document.getElementById('aiModalLoading').style.display = 'block';
+    document.getElementById('aiModalContent').style.display = 'none';
+    
+    // Collapse the chat drawer and reset toggle button text
+    const chatBox = document.getElementById('aiChatBox');
+    if (chatBox) {
+        chatBox.style.display = 'none';
+        document.getElementById('aiChatToggleBtn').innerText = "💬 Get More Information / Ask Follow-up";
+    }
+    
+    // Clear all chat messages, leaving only the initial greeting
+    const messagesContainer = document.getElementById('aiChatMessages');
+    if (messagesContainer) {
+        messagesContainer.innerHTML = `
+            <div class="ai-chat-msg assistant">Hello! Ask me any questions about your workouts, form adjustments, or BMI targets based on your recent data.</div>
+        `;
+    }
+    
+    // Clear the chat input field
+    const chatInput = document.getElementById('aiChatInput');
+    if (chatInput) {
+        chatInput.value = '';
+    }
+}
+
+function parseAndDisplayInsights(text) {
+    let current = "", rec = "", diet = "";
+    const parts = text.split('### ');
+    
+    parts.forEach(part => {
+        if (part.startsWith('CURRENT_WORKOUT')) {
+            current = part.replace('CURRENT_WORKOUT', '').trim();
+        } else if (part.startsWith('WORKOUT_RECOMMENDATION')) {
+            rec = part.replace('WORKOUT_RECOMMENDATION', '').trim();
+        } else if (part.startsWith('DIET_PLAN')) {
+            diet = part.replace('DIET_PLAN', '').trim();
+        }
+    });
+
+    if (!current && !rec && !diet) {
+        current = text;
+        rec = "Focus on consistent pacing across exercises to optimize your target BMI.";
+        diet = "Maintain a clean, balanced calorie-deficit nutrition plan.";
+    }
+
+    document.getElementById('currentWorkoutText').innerText = current;
+    document.getElementById('workoutRecText').innerText = rec;
+    document.getElementById('dietPlanText').innerText = diet;
+}
+
+
+function toggleAiChat() {
+    const chatBox = document.getElementById('aiChatBox');
+    if (chatBox.style.display === 'flex') {
+        chatBox.style.display = 'none';
+        document.getElementById('aiChatToggleBtn').innerText = "💬 Get More Information / Ask Follow-up";
+    } else {
+        chatBox.style.display = 'flex';
+        document.getElementById('aiChatToggleBtn').innerText = "Hide Chat";
+        document.getElementById('aiChatMessages').scrollTop = document.getElementById('aiChatMessages').scrollHeight;
+    }
+}
+
+function handleChatKeyPress(e) {
+    if (e.key === 'Enter') {
+        sendAiChatMessage();
+    }
+}
+
+function sendAiChatMessage() {
+    const inputField = document.getElementById('aiChatInput');
+    const message = inputField.value.trim();
+    if (!message) return;
+
+    const messagesContainer = document.getElementById('aiChatMessages');
+    
+    // Append user message
+    messagesContainer.innerHTML += `<div class="ai-chat-msg user">${escapeHtml(message)}</div>`;
+    inputField.value = '';
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Append loading placeholder for assistant
+    const loadingId = 'loading-' + Date.now();
+    messagesContainer.innerHTML += `<div class="ai-chat-msg assistant" id="${loadingId}">Thinking...</div>`;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Call chat API endpoint
+    fetch('/api/ai-chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ question: message })
+    })
+    .then(async res => {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            return res.json();
+        } else {
+            const text = await res.text();
+            throw new Error(`Server returned non-JSON response (${res.status}): ${text.substring(0, 100)}`);
+        }
+    })
+    .then(data => {
+        const loadingElem = document.getElementById(loadingId);
+        if (data.status === 'success') {
+            loadingElem.innerText = data.reply;
+        } else {
+            // Display the custom error message returned from the backend
+            loadingElem.innerText = data.message || "Sorry, the AI coach couldn't process your request right now. Please try again later.";
+            loadingElem.style.color = "#f87171"; // Optional: subtle red accent for errors
+        }
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    })
+    .catch(err => {
+        console.error("AI Chat Error:", err);
+        const loadingElem = document.getElementById(loadingId);
+        if (loadingElem) {
+            loadingElem.innerText = "Connection lost. Please check your network and try again.";
+            loadingElem.style.color = "#f87171";
+        }
+    });
+}
+
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Helper to grab Django CSRF token if needed
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim(); // Corrected: call trim() on each individual cookie string
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 // Global Chart references
 // 1. Global Chart Instance References
 let calorieChartInstance = null;
@@ -527,9 +769,22 @@ function updateCalorieView() {
     if (nextBtn) nextBtn.disabled = (calorieWeekOffset >= 0);
 
     if (title) {
-        title.innerText = calorieWeekOffset === 0 
-            ? 'Past 7 Days Calorie Burn (kcal)' 
-            : `Calorie Burn (${Math.abs(calorieWeekOffset * 7)}–${Math.abs((calorieWeekOffset - 1) * 7)} Days Ago)`;
+        if (calorieWeekOffset === 0) {
+            title.innerText = 'Past 7 Days Calorie Burn (kcal)';
+        } else {
+            // Calculate date range for past weeks
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + (calorieWeekOffset * 7));
+            
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 6);
+
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            const startStr = startDate.toLocaleDateString([], options);
+            const endStr = endDate.toLocaleDateString([], options);
+
+            title.innerText = `Calorie Burn (${startStr} – ${endStr})`;
+        }
     }
 
     // Fetch new Calorie data and update chart
@@ -603,13 +858,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Parse template data
-    const dateLabels = safeParseJSON('{{ date_labels_json|default:"[]"|escapejs }}');
-    const caloriesData = safeParseJSON('{{ calories_data_json|default:"[]"|escapejs }}');
-    const exerciseLabels = safeParseJSON('{{ exercise_types_json|default:"[]"|escapejs }}');
-    const exerciseCounts = safeParseJSON('{{ exercise_counts_json|default:"[]"|escapejs }}');
-    const exerciseAccuracies = safeParseJSON('{{ exercise_accuracies_json|default:"[]"|escapejs }}');
-    const bmiDates = safeParseJSON('{{ bmi_dates_json|default:"[]"|escapejs }}');
-    const bmiValues = safeParseJSON('{{ bmi_values_json|default:"[]"|escapejs }}');
+    const dateLabels = safeParseJSON('{{ date_labels_json|default:"[]"|escapejs }}', ['No Data']);
+    const caloriesData = safeParseJSON('{{ calories_data_json|default:"[]"|escapejs }}', [0]);
+    const exerciseLabels = safeParseJSON('{{ exercise_types_json|default:"[]"|escapejs }}', ['Push Ups', 'Squats', 'Sit Ups']);
+    const exerciseCounts = safeParseJSON('{{ exercise_counts_json|default:"[]"|escapejs }}', [0, 0, 0]);
+    const exerciseAccuracies = safeParseJSON('{{ exercise_accuracies_json|default:"[]"|escapejs }}', [0, 0, 0]);
+    const bmiDates = safeParseJSON('{{ bmi_dates_json|default:"[]"|escapejs }}', ['No Data']);
+    const bmiValues = safeParseJSON('{{ bmi_values_json|default:"[]"|escapejs }}', [0]);
 
     const chartColors = ['#00f2fe', '#4facfe', '#ff0844', '#ffb199', '#7000ff'];
     const hoverChartColors = ['#38f9d7', '#00c6ff', '#ff4e50', '#f9d423', '#9e00ff'];
@@ -721,6 +976,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }]
             },
             options: {
+                animation: { duration: 0 }, // Prevents animation hide glitches
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -735,18 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    const calCanvas = document.getElementById('calorieChart');
-    if (calCanvas) calorieChartInstance = new Chart(calCanvas, calorieConfig);
-
-    const bmiCanvas = document.getElementById('bmiChart');
-    if (bmiCanvas) bmiChartInstance = new Chart(bmiCanvas, bmiConfig);
-
-    const countCanvas = document.getElementById('exerciseCountChart');
-    if (countCanvas) exerciseCountChartInstance = new Chart(countCanvas, getDoughnutConfig(exerciseCounts, ' reps'));
-
-    const accCanvas = document.getElementById('accuracyChart');
-    if (accCanvas) accuracyChartInstance = new Chart(accCanvas, getDoughnutConfig(exerciseAccuracies, '% Accuracy'));
-
+    
     // IntersectionObserver for lazy chart rendering on scroll
     const chartObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -757,29 +1002,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 wrapper.classList.add('chart-visible');
 
                 if (canvasId === 'calorieChart') {
-                    if (dateLabels.length > 0 && caloriesData.length > 0) {
-                        createOrUpdateChart(canvasId, getCalorieChartConfig());
-                    } else {
-                        showNoDataMessage(canvasId, 'No calorie data recorded yet.');
-                    }
+                    calorieChartInstance = createOrUpdateChart('calorieChart', calorieConfig);
+                    updateCalorieView();
                 } else if (canvasId === 'bmiChart') {
-                    if (bmiDates.length > 0 && bmiValues.length > 0) {
-                        createOrUpdateChart(canvasId, getBmiChartConfig());
-                    } else {
-                        showNoDataMessage(canvasId, 'No BMI history recorded yet.');
-                    }
+                    bmiChartInstance = createOrUpdateChart('bmiChart', bmiConfig);
+                    //updateBmiView();
                 } else if (canvasId === 'exerciseCountChart') {
-                    if (exerciseLabels.length > 0 && exerciseCounts.some(v => v > 0)) {
-                        createOrUpdateChart(canvasId, getDoughnutChartConfig(exerciseCounts, ' reps'));
-                    } else {
-                        showNoDataMessage(canvasId, 'No exercises logged today.');
-                    }
+                    exerciseCountChartInstance = createOrUpdateChart('exerciseCountChart', getDoughnutConfig(exerciseCounts, ' reps'));
+                    updateDailyViews();
                 } else if (canvasId === 'accuracyChart') {
-                    if (exerciseLabels.length > 0 && exerciseAccuracies.some(v => v > 0)) {
-                        createOrUpdateChart(canvasId, getDoughnutChartConfig(exerciseAccuracies, '% Accuracy'));
-                    } else {
-                        showNoDataMessage(canvasId, 'No exercises logged today.');
-                    }
+                    accuracyChartInstance = createOrUpdateChart('accuracyChart', getDoughnutConfig(exerciseAccuracies, '% Accuracy'));
+                    updateDailyViews();
                 }
 
                 observer.unobserve(entry.target);

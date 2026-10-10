@@ -10,12 +10,15 @@ import subprocess
 from django.db.models import Sum, Avg
 import numpy as np
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from calendar import Calendar, month_name
 from calendar import monthrange
 from django.utils import timezone
 from django.db.models import Sum, Avg
 from django.http import JsonResponse
 from .exercise_model.detectors import get_exercise_detector
+from .suggestion import call_gemini_single_try, get_user_fitness_context
+from google import genai
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect, get_object_or_404
@@ -25,7 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import UserBMI, WorkoutSession, Profile
+from .models import UserBMI, WorkoutSession, Profile, LoginActivityDay
 from .forms import (
     RegistrationForm, 
     LoginForm, 
@@ -350,9 +353,95 @@ def update_bmi_view(request):
 
     return redirect('home')
 
+@login_required
+def get_ai_insights_api(request):
+    try:
+        insights = get_user_fitness_context(request.user)
+        return JsonResponse({'status': 'success', 'insights': insights})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def ai_chat_api(view_request):
+    if view_request.method == 'POST':
+        try:
+            data = json.loads(view_request.body)
+            user_question = data.get('question', '').strip()
+            
+            if not user_question:
+                return JsonResponse({'status': 'error', 'message': 'Empty question.'}, status=400)
+
+            user_data_context = get_user_fitness_context(view_request.user)
+            
+            chat_prompt = f"""
+            You are an expert AI fitness coach engaged in an interactive chat session.
+            User Profile & Recent Stats:
+            {user_data_context}
+
+            Guidelines:
+            - Answer the user's follow-up question strictly related to workouts, exercise form, calorie burn calculations, or their BMI trends.
+            - Keep your response concise (2-4 sentences max), direct, and actionable.
+
+            User Question: {user_question}
+            """
+
+            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            
+            try:
+                reply = call_gemini_single_try(client, chat_prompt)
+            except Exception as e:
+                print("GEMINI API ERROR:", str(e))
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'The AI fitness coach is currently unavailable. Please try again later.'
+                }, status=503)
+
+            return JsonResponse({'status': 'success', 'reply': reply})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
 @login_required(login_url='login')
 def profile_view(request):
-    return render(request, 'accounts/profile.html')
+    today = timezone.localdate()
+    try:
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+        displayed_month = date(year, month, 1)
+    except (TypeError, ValueError):
+        displayed_month = today.replace(day=1)
+
+    month_grid = Calendar(firstweekday=6).monthdayscalendar(
+        displayed_month.year,
+        displayed_month.month,
+    )
+    activity_days = set(
+        LoginActivityDay.objects.filter(
+            user=request.user,
+            date__year=displayed_month.year,
+            date__month=displayed_month.month,
+        ).values_list('date__day', flat=True)
+    )
+    weeks = [
+        [{'day': day, 'active': day in activity_days, 'is_today': (
+            day != 0 and displayed_month.year == today.year
+            and displayed_month.month == today.month and day == today.day
+        )} for day in week]
+        for week in month_grid
+    ]
+    previous_month = (displayed_month.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month = (displayed_month.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+    return render(request, 'accounts/profile.html', {
+        'profile': request.user.profile,
+        'calendar_weeks': weeks,
+        'calendar_month': month_name[displayed_month.month],
+        'calendar_year': displayed_month.year,
+        'previous_month': previous_month,
+        'next_month': next_month,
+        'active_days_count': len(activity_days),
+    })
 
 
 @never_cache

@@ -54,18 +54,25 @@ class PushupDetector(BaseExerciseDetector):
     
             if detection_result.pose_landmarks and len(detection_result.pose_landmarks) > 0:
                 lm = detection_result.pose_landmarks[0]
-                required_indices = [11, 13, 15, 23, 27]
+                # Pick the side with the clearest shoulder, elbow, wrist, hip,
+                # and ankle landmarks on this frame.
+                left_indices = (11, 13, 15, 23, 27)
+                right_indices = (12, 14, 16, 24, 28)
+                left_score = min(lm[idx].visibility for idx in left_indices)
+                right_score = min(lm[idx].visibility for idx in right_indices)
+                side_indices = left_indices if left_score >= right_score else right_indices
     
-                if not all(lm[idx].visibility >= 0.6 for idx in required_indices):
+                if max(left_score, right_score) < 0.6:
                     cv2.rectangle(img, (10, 10), (w - 10, 60), (0, 0, 255), -1)
-                    cv2.putText(img, "Place camera at LEFT side & show FULL body", 
+                    cv2.putText(img, "Place camera at either side & show FULL body", 
                                 (20, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
                 else:
-                    shoulder = [lm[11].x * w, lm[11].y * h]
-                    elbow    = [lm[13].x * w, lm[13].y * h]
-                    wrist    = [lm[15].x * w, lm[15].y * h]
-                    hip      = [lm[23].x * w, lm[23].y * h]
-                    ankle    = [lm[27].x * w, lm[27].y * h]
+                    shoulder_idx, elbow_idx, wrist_idx, hip_idx, ankle_idx = side_indices
+                    shoulder = [lm[shoulder_idx].x * w, lm[shoulder_idx].y * h]
+                    elbow    = [lm[elbow_idx].x * w, lm[elbow_idx].y * h]
+                    wrist    = [lm[wrist_idx].x * w, lm[wrist_idx].y * h]
+                    hip      = [lm[hip_idx].x * w, lm[hip_idx].y * h]
+                    ankle    = [lm[ankle_idx].x * w, lm[ankle_idx].y * h]
     
                     elbow_angle = self.calculate_angle(shoulder, elbow, wrist)
                     body_angle  = self.calculate_angle(shoulder, hip, ankle)
@@ -75,15 +82,26 @@ class PushupDetector(BaseExerciseDetector):
                     is_hand_pointing_down = forearm_deviation <= 30.0
                     is_form_valid = is_body_straight and is_hand_pointing_down
     
+                    body_length = float(np.linalg.norm(np.subtract(shoulder, ankle)))
                     if elbow_angle >= 155 and session_data['stage'] != "down":
                         session_data['top_shoulder_y'] = shoulder[1]
     
                     top_y = session_data['top_shoulder_y']
                     shoulder_drop = (shoulder[1] - top_y) if top_y is not None else 0
-                    has_actual_body_movement = shoulder_drop >= (h * 0.08)
+                    # Normalize the required shoulder travel to this user's
+                    # visible body length rather than the camera frame size.
+                    has_actual_body_movement = (
+                        body_length > 0 and shoulder_drop >= (body_length * 0.08)
+                    )
     
                     if not is_form_valid:
-                        session_data['bad_form_flag'] = True
+                        # Ignore isolated landmark/form noise. Mark the rep bad
+                        # only after form has failed for several consecutive frames.
+                        session_data['pushup_bad_form_frames'] = session_data.get('pushup_bad_form_frames', 0) + 1
+                        if session_data['pushup_bad_form_frames'] >= 3:
+                            session_data['bad_form_flag'] = True
+                    else:
+                        session_data['pushup_bad_form_frames'] = 0
     
                     if elbow_angle <= 95 and is_form_valid and has_actual_body_movement:
                         if session_data['stage'] != "down":
@@ -95,6 +113,7 @@ class PushupDetector(BaseExerciseDetector):
                             session_data['counter'] += 1
                         session_data['stage'] = "up"
                         session_data['bad_form_flag'] = False
+                        session_data['pushup_bad_form_frames'] = 0
     
                     counter = session_data['counter']
                     total_attempts = session_data['total_attempts']
@@ -104,14 +123,20 @@ class PushupDetector(BaseExerciseDetector):
                     per = np.interp(elbow_angle, (90, 160), (100, 0))
                     bar = np.interp(elbow_angle, (90, 160), (100, 400))
     
-                    if is_form_valid and (has_actual_body_movement or session_data['stage'] == "up"):
-                        status_msg, banner_color = "Perfect Form!", (0, 200, 0)
+                    form_error_persisted = (
+                        session_data.get('pushup_bad_form_frames', 0) >= 3
+                        or session_data['bad_form_flag']
+                    )
+                    if form_error_persisted:
+                        status_msg, banner_color = "Rep Invalid: Form Error", (0, 0, 255)
+                    elif not is_form_valid:
+                        # Hide transient form errors until they meet the same
+                        # persistence threshold used to invalidate the rep.
+                        status_msg, banner_color = "Checking Form...", (0, 180, 220)
                     elif not has_actual_body_movement and elbow_angle < 130:
-                        status_msg, banner_color = "Fake Movement! Lower Body", (0, 0, 255)
-                    elif not is_body_straight:
-                        status_msg, banner_color = "Keep Body Straight!", (0, 0, 255)
+                        status_msg, banner_color = "Lower Body Through Full Range", (0, 180, 220)
                     else:
-                        status_msg, banner_color = "Bad Form: Check Forearms!", (0, 0, 255)
+                        status_msg, banner_color = "Perfect Form!", (0, 200, 0)
     
                     # Draw Visual Feedback
                     cv2.rectangle(img, (150, 20), (640, 60), banner_color, -1)

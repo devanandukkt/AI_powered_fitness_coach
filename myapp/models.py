@@ -47,6 +47,21 @@ class WorkoutSession(models.Model):
     def __str__(self):
         return f"User ID: {self.user.id} ({self.user.username}) - {self.exercise_type} on {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
+
+class LoginActivityDay(models.Model):
+    """One record per day a user visits the app while authenticated."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_activity_days')
+    date = models.DateField()
+
+    class Meta:
+        ordering = ['-date']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'date'], name='unique_user_login_activity_day'),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} active on {self.date}"
+
 # Automatically create or update Profile when User is created/updated
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):

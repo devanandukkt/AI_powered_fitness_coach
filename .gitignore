@@ -1,0 +1,27 @@
+# Security & Keys (Crucial for ssh_key)
+ssh_key
+ssh_key.pub
+*.pem
+*.key
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+ENV/
+
+# Django
+db.sqlite3
+*.log
+local_settings.py
+media/
+
+# IDEs & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
