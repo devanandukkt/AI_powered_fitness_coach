@@ -356,9 +356,39 @@ def update_bmi_view(request):
 @login_required
 def get_ai_insights_api(request):
     try:
-        insights = get_user_fitness_context(request.user)
-        return JsonResponse({'status': 'success', 'insights': insights})
+        # 1. Gather user context
+        user_data_context = get_user_fitness_context(request.user)
+        
+        # 2. Construct the prompt with strict section headers
+        prompt = f"""
+        You are an expert AI fitness coach. Analyze the user's recent workout stats and BMI below and provide structured advice.
+
+        User Data:
+        {user_data_context}
+
+        You MUST format your response using EXACTLY these three markdown headings:
+        ### CURRENT_WORKOUT
+        (Provide a concise analysis of their recent performance, accuracy, and BMI status)
+
+        ### WORKOUT_RECOMMENDATION
+        (Provide tailored exercise suggestions and form improvements for their next session)
+
+        ### DIET_PLAN
+        (Provide targeted nutrition and calorie guidelines based on their metrics)
+        """
+
+        # 3. Call Gemini using the single-try client
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=prompt,
+        )
+
+        insights_text = response.text
+        return JsonResponse({'status': 'success', 'insights': insights_text})
+
     except Exception as e:
+        print("AI Insights Error:", str(e))
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @login_required

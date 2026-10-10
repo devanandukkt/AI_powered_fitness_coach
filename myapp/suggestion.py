@@ -1,7 +1,5 @@
 # suggestion.py
 
-from google import genai
-from django.conf import settings
 from .models import UserBMI, WorkoutSession
 from datetime import datetime, timedelta
 
@@ -24,7 +22,7 @@ def get_user_fitness_context(user):
 def call_gemini_single_try(client, prompt):
     # Single attempt without tenacity retry logic
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.8-flash',
         contents=prompt,
     )
     return response.text
